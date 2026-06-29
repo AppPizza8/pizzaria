@@ -252,6 +252,15 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <button onclick="doLogin()">Entrar</button>
     <div class="login-error" id="login-error">⚠ Usuário ou senha incorretos.</div>
+    <div style="margin-top:20px;padding:14px;background:#0d1117;border-radius:10px;text-align:left;font-size:12px;color:#8b949e;border:1px solid #30363d">
+      <div style="font-weight:700;color:#e6edf3;margin-bottom:8px">🔑 Acessos padrão (senha: <span style='color:#e63946'>pizza123</span>)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <span>👑 admin</span><span>👔 gerente</span>
+        <span>💰 caixa</span><span>👨‍🍳 cozinha</span>
+        <span>🛵 entregador</span>
+      </div>
+      <div style="margin-top:8px;color:#6e7681;font-size:11px">Altere as senhas em Minha Conta após o login</div>
+    </div>
   </div>
 </div>
 
@@ -292,11 +301,24 @@ const S = {
 };
 
 function initData(){
+  const defaultUsers=[
+    {id:1,username:'admin',     password:'pizza123',name:'Administrador',  role:'admin',      active:true},
+    {id:2,username:'gerente',   password:'pizza123',name:'Gerente',        role:'gerente',    active:true},
+    {id:3,username:'caixa',     password:'pizza123',name:'Caixa',          role:'caixa',      active:true},
+    {id:4,username:'cozinha',   password:'pizza123',name:'Cozinha',        role:'cozinha',    active:true},
+    {id:5,username:'entregador',password:'pizza123',name:'Entregador',     role:'entregador', active:true},
+  ];
   if(!S.get('pp_users',null)){
-    S.set('pp_users',[
-      {id:1,username:'admin',password:'pizza123',name:'Administrador',role:'admin',active:true}
-    ]);
+    S.set('pp_users',defaultUsers);
+  } else if(!S.get('pp_v2',null)){
+    // migração: garante que todos os usuários padrão existem
+    const users=S.get('pp_users',[]);
+    defaultUsers.forEach(du=>{
+      if(!users.find(u=>u.username===du.username)) users.push(du);
+    });
+    S.set('pp_users',users);
   }
+  S.set('pp_v2','1');
   if(!S.get('pp_orders',null)) S.set('pp_orders',[]);
   if(!S.get('pp_tables',null)){
     S.set('pp_tables', Array.from({length:12},(_,i)=>({id:i+1,status:'free',orderId:null})));
