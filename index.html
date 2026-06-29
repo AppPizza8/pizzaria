@@ -736,8 +736,6 @@ function updateCartTotal(){
 
 function setOrderType(type,btn){
   orderType=type;
-  document.querySelectorAll('.pay-btn').forEach(b=>{if(['delivery','mesa','retirada'].some(t=>b.textContent.includes(t.charAt(0).toUpperCase()+t.slice(1))||b.onclick?.toString().includes(t)){}});
-  // simpler approach: re-render type buttons
   btn.parentElement.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const addrRow=document.getElementById('cart-addr-row');
