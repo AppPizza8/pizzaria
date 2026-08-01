@@ -667,11 +667,9 @@ function dashboard(el){
 let cart=[];
 let selectedPayment='dinheiro';
 let orderType='delivery';
-let currentTableId=null;
 
 function pdv(el){
   cart=[];
-  currentTableId=null;
   const products=S.get('pp_products',[]).filter(p=>p.active);
   const cats=['Todos',...new Set(products.map(p=>p.category))];
 
@@ -700,16 +698,13 @@ function pdv(el){
           ${S.get('pp_clients',[]).map(c=>`<option value="${c.name}">`).join('')}
         </datalist>
       </div>
-            <div id="cart-addr-row" class="form-row" style="margin-bottom:10px">
+      <div id="cart-addr-row" class="form-row" style="margin-bottom:10px">
         <label>Endereço</label>
         <input id="cart-addr" placeholder="Rua, número, bairro...">
       </div>
       <div id="cart-table-row" class="form-row" style="margin-bottom:10px;display:none">
-        <label>Número da Mesa</label>
-        <select id="cart-table">
-          <option value="">Selecione uma mesa</option>
-          ${S.get('pp_tables',[]).map(t=>`<option value="${t.id}">Mesa ${t.id}</option>`).join('')}
-        </select>
+        <label>Mesa *</label>
+        <select id="cart-table"></select>
       </div>
       <div class="cart-items" id="cart-items"><p style="color:var(--muted);font-size:13px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
       <div class="cart-total-box">
@@ -837,8 +832,7 @@ function setOrderType(type,btn){
   const addrRow=document.getElementById('cart-addr-row');
   const tableRow=document.getElementById('cart-table-row');
   if(addrRow) addrRow.style.display=type==='delivery'?'block':'none';
-  if(tableRow) tableRow.style.display=type==='mesa'?'block':'none';
-}
+  if(tableRow){
     tableRow.style.display=type==='mesa'?'block':'none';
     if(type==='mesa'){
       const tables=S.get('pp_tables',[]);
@@ -861,40 +855,29 @@ function setPay(type,btn){
 function submitOrder(){
   const client=document.getElementById('cart-client')?.value.trim();
   const addr=document.getElementById('cart-addr')?.value.trim();
-  const tableId=orderType==='mesa'?parseInt(document.getElementById('cart-table')?.value):null;
-  
+  const tableId=document.getElementById('cart-table')?.value?(parseInt(document.getElementById('cart-table').value)):null;
   if(!client){alert('Informe o nome do cliente');return;}
   if(cart.length===0){alert('Adicione pelo menos um item');return;}
   if(orderType==='delivery'&&!addr){alert('Informe o endereço de entrega');return;}
-  if(orderType==='mesa'&&!tableId){alert('Selecione uma mesa');return;}
-  
+  if(orderType==='mesa'&&!tableId){alert('Selecione a mesa');return;}
   const orders=S.get('pp_orders',[]);
   const total=cart.reduce((s,c)=>s+c.price,0);
   const obs=document.getElementById('cart-obs')?.value;
-  
-  const newOrder={
-    id:nextId(orders),
-    client,
-    address:addr,
-    type:orderType,
-    tableId:tableId,
-    items:cart.map(c=>({...c})),
-    total,
-    payment:selectedPayment,
-    obs,
-    status:'pending',
-    createdAt:now(),
-    createdBy:currentUser.username
-  };
-  
+  const newOrder={id:nextId(orders),client,address:addr,tableId:orderType==='mesa'?tableId:null,type:orderType,items:cart.map(c=>({...c})),total,payment:selectedPayment,obs,status:'pending',createdAt:now(),createdBy:currentUser.username};
   orders.push(newOrder);
   S.set('pp_orders',orders);
+  // Marcar mesa como ocupada
+  if(orderType==='mesa'&&tableId){
+    const tables=S.get('pp_tables',[]);
+    const t=tables.find(x=>x.id===tableId);
+    if(t){t.status='occupied';t.orderId=newOrder.id;t.openedAt=now();S.set('pp_tables',tables);}
+  }
   cart=[];
-  currentTableId=null;
-  buildSidebar();
-  alert(`✅ Pedido #${newOrder.id} criado com sucesso!`);
-  navigate('pdv');
+  buildSidebar(); // update badge
+  alert(`✅ Pedido #${newOrder.id} criado com sucesso!${orderType==='mesa'?' (Mesa '+tableId+')':''}`);
+  navigate('orders');
 }
+
 // ============================================================
 // ORDERS
 // ============================================================
@@ -925,7 +908,7 @@ function renderOrdersRows(list){
   const payLabel={dinheiro:'💵',cartao:'💳',pix:'📱'};
   return [...list].reverse().map(o=>`<tr>
     <td><strong>#${o.id}</strong></td>
-    <td>${o.client}${o.tableId?' (Mesa '+o.tableId+')':''}</td>
+    <td>${o.client}</td>
     <td>${typeLabelFull(o)}</td>
     <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items?.map(i=>`${i.qty}x ${i.name}`).join(', ')||'-'}</td>
     <td><strong>${fmt(o.total)}</strong></td>
@@ -985,9 +968,10 @@ function cancelOrder(id){
 function viewOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
+  const tipoLabel=o.type==='mesa'&&o.tableId?`🪑 Mesa ${o.tableId}`:{delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||o.type;
   openModal(`<div class="modal">
-    <h3>Pedido #${o.id}</h3>
-    <p style="color:var(--muted);font-size:13px;margin-bottom:16px">${o.createdAt} — ${o.client}${o.tableId?' (Mesa '+o.tableId+')':''}</p>
+    <h3>Pedido #${o.id} — ${tipoLabel}</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:16px">${o.createdAt} — ${o.client}</p>
     <table style="margin-bottom:16px">
       <thead><tr><th>Item</th><th>Tamanho</th><th>Borda</th><th>Qtd</th><th>Preço</th></tr></thead>
       <tbody>
@@ -999,78 +983,11 @@ function viewOrder(id){
     </div>
     ${o.obs?`<p style="margin-top:10px;font-size:13px;color:var(--muted)">📝 ${o.obs}</p>`:''}
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
-    ${o.type==='mesa'?`<div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
-      <button class="btn btn-red" onclick="addItemsToTableOrder(${o.id})">➕ Adicionar Itens</button>
-    </div>`:
-    `<div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Fechar</button></div>`}
+    ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
+    <div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Fechar</button></div>
   </div>`);
 }
-  function addItemsToTableOrder(orderId){
-  const orders=S.get('pp_orders',[]);
-  const order=orders.find(x=>x.id===orderId);
-  if(!order)return;
-  
-  closeModal();
-  currentTableId=order.tableId;
-  cart=[];
-  orderType='mesa';
-  selectedPayment='dinheiro';
-  
-  const products=S.get('pp_products',[]).filter(p=>p.active);
-  const cats=['Todos',...new Set(products.map(p=>p.category))];
 
-  const el=document.getElementById('main-content');
-  el.innerHTML=`
-  <div style="margin-bottom:16px">
-    <button class="btn btn-gray" onclick="navigate('orders')">← Voltar</button>
-    <span style="margin-left:16px;font-size:14px">Adicionando itens ao Pedido #${orderId} (Mesa ${order.tableId})</span>
-  </div>
-  <div class="pdv-layout">
-    <div class="pdv-products">
-      <input class="product-search" placeholder="🔍 Buscar produto..." oninput="filterProducts(this.value)">
-      <div class="cat-tabs">
-        ${cats.map(c=>`<button class="cat-tab ${c==='Todos'?'active':''}" onclick="filterCat('${c}',this)">${c}</button>`).join('')}
-      </div>
-      <div class="product-grid" id="product-grid">
-        ${products.map(p=>productCard(p)).join('')}
-      </div>
-    </div>
-    <div class="pdv-cart">
-      <h3 style="margin-bottom:14px;font-size:15px">🛒 Itens a Adicionar</h3>
-      <div class="cart-items" id="cart-items"><p style="color:var(--muted);font-size:13px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
-      <div class="cart-total-box">
-        <div class="cart-total-row"><span style="color:var(--muted)">Subtotal</span><span id="cart-sub">R$ 0,00</span></div>
-        <div class="cart-total-row big"><span>Total</span><span id="cart-total-val" style="color:var(--red)">R$ 0,00</span></div>
-        <textarea class="cart-obs" id="cart-obs" rows="2" placeholder="Observações adicionais..."></textarea>
-        <button class="btn btn-red" style="width:100%;justify-content:center;padding:12px;margin-bottom:8px" onclick="addItemsToExistingOrder(${orderId})">✅ Adicionar Itens</button>
-        <button class="btn btn-gray" style="width:100%;justify-content:center;padding:12px" onclick="navigate('orders')">❌ Cancelar</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function addItemsToExistingOrder(orderId){
-  if(cart.length===0){alert('Adicione pelo menos um item');return;}
-  
-  const orders=S.get('pp_orders',[]);
-  const order=orders.find(x=>x.id===orderId);
-  if(!order)return;
-  
-  const addedTotal=cart.reduce((s,c)=>s+c.price,0);
-  const obs=document.getElementById('cart-obs')?.value;
-  
-  order.items.push(...cart.map(c=>({...c})));
-  order.total+=addedTotal;
-  if(obs) order.obs=(order.obs||'')+'\n'+obs;
-  
-  S.set('pp_orders',orders);
-  cart=[];
-  currentTableId=null;
-  buildSidebar();
-  alert(`✅ Itens adicionados ao Pedido #${orderId}!`);
-  navigate('orders');
-}
 // ============================================================
 // KITCHEN
 // ============================================================
@@ -1103,7 +1020,7 @@ function kitchen(el){
 
 function kitchenCard(o,status){
   return `<div class="kitchen-card ${status==='pending'&&(new Date()-new Date(o.createdAt.split(', ').join(' ')))>600000?'urgent':''}">
-    <h4><span>#${o.id} — ${o.client}${o.tableId?' (Mesa '+o.tableId+')':''}</span>${statusBadge(o.status)}</h4>
+    <h4><span>#${o.id} — ${o.client}</span>${statusBadge(o.status)}</h4>
     <div class="kc-items">${o.items?.map(i=>`• ${i.qty}x ${i.name} (${i.size||''}${i.border&&i.border!=='Sem Borda'?' | Borda '+i.border:''})`).join('<br>')||''}</div>
     ${o.obs?`<div style="font-size:11px;color:var(--orange);margin-bottom:8px">📝 ${o.obs}</div>`:''}
     <div class="kc-time">⏱ ${o.createdAt}</div>
@@ -1119,7 +1036,7 @@ function kitchenCard(o,status){
 // DELIVERY
 // ============================================================
 function delivery(el){
-  const orders=S.get('pp_orders',[]).filter(o=>o.type==='delivery');
+  const orders=S.get('pp_orders',[]).filter(o=>o.status==='delivery'||o.status==='done');
   el.innerHTML=`
   <div class="page-header" style="margin-bottom:16px">
     <h2>🛵 Delivery</h2>
