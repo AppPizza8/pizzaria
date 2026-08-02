@@ -489,6 +489,7 @@ function showAlert(id,type,msg){
 }
 
 function closeModal(){document.querySelectorAll('.modal-overlay').forEach(m=>m.remove());}
+function closeLastModal(){const m=document.querySelectorAll('.modal-overlay');if(m.length)m[m.length-1].remove();}
 
 function openModal(html){
   const d=document.createElement('div');
@@ -729,7 +730,7 @@ function openProductOptions(id){
       <input id="po-obs" placeholder="Ex: sem cebola, bem assado...">
     </div>
     <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-gray" onclick="closeLastModal()">Cancelar</button>
       <button class="btn btn-red" onclick="addToCart(${id})">Adicionar ao Carrinho</button>
     </div>
   </div>`);
@@ -748,7 +749,7 @@ function addToCart(id){
   const obs=document.getElementById('po-obs').value;
   const unitPrice=sizePrice+borderPrice;
   cart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
-  closeModal();
+  closeLastModal();
   renderCart();
 }
 
@@ -972,7 +973,7 @@ function openAddProductOptions(id){
       <input id="ap-obs" placeholder="Ex: sem cebola, bem assado...">
     </div>
     <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-gray" onclick="closeLastModal()">Cancelar</button>
       <button class="btn btn-red" onclick="addItemToCart(${id})">Adicionar</button>
     </div>
   </div>`);
@@ -991,7 +992,7 @@ function addItemToCart(id){
   const obs=document.getElementById('ap-obs').value;
   const unitPrice=sizePrice+borderPrice;
   addItemsCart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
-  closeModal();
+  closeLastModal();
   renderAddCart();
 }
 
@@ -1038,7 +1039,7 @@ function confirmAddItems(){
   S.set('pp_orders',orders);
   addItemsOrderId=null;
   addItemsCart=[];
-  closeModal();
+  closeLastModal();
   buildSidebar();
   alert(`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${o.id}!\nTotal atualizado: ${fmt(o.total)}`);
   navigate(currentPage);
