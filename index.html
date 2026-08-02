@@ -872,13 +872,176 @@ function cancelEditing(){
   navigate(defaultP);
 }
 
+// ============ ADD ITEMS TO ORDER (Modal-based, works from any page/role) ============
+let addItemsOrderId=null;
+let addItemsCart=[];
+
 function addItemToOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
   if(o.status==='done'||o.status==='cancelled'){alert('Este pedido já foi concluído/cancelado');return;}
-  editingOrderId=id;
-  // Navigate to pdv for editing - the role bypass is in navigate()
-  navigate('pdv');
+  addItemsOrderId=id;
+  addItemsCart=[];
+  openAddItemsModal(o);
+}
+
+function openAddItemsModal(o){
+  const products=S.get('pp_products',[]).filter(p=>p.active);
+  const cats=['Todos',...new Set(products.map(p=>p.category))];
+  openModal(`<div class="modal modal-lg" style="width:800px">
+    <h3>➕ Adicionar Itens — Pedido #${o.id} (${o.client})</h3>
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
+      <div>
+        <input class="product-search" placeholder="🔍 Buscar produto..." oninput="filterAddProducts(this.value)">
+        <div class="cat-tabs" id="add-cat-tabs">
+          ${cats.map(c=>`<button class="cat-tab ${c==='Todos'?'active':''}" onclick="filterAddCat('${c}',this)">${c}</button>`).join('')}
+        </div>
+        <div class="product-grid" id="add-product-grid">
+          ${products.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
+            <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
+            <div class="pc-name">${p.name}</div>
+            <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:400px;overflow-y:auto">
+        <h4 style="font-size:13px;margin-bottom:10px;color:var(--muted)">🛒 Novos Itens</h4>
+        <div id="add-cart-items"><p style="color:var(--muted);font-size:12px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
+        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700">
+          <span>Total adicional:</span>
+          <span id="add-cart-total" style="color:var(--red)">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeAddItemsModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="confirmAddItems()" style="background:var(--green)">✅ Confirmar Adição</button>
+    </div>
+  </div>`);
+}
+
+function filterAddProducts(q){
+  const products=S.get('pp_products',[]).filter(p=>p.active&&p.name.toLowerCase().includes(q.toLowerCase()));
+  const el=document.getElementById('add-product-grid');
+  if(el) el.innerHTML=products.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
+    <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
+    <div class="pc-name">${p.name}</div>
+    <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
+  </div>`).join('');
+}
+
+function filterAddCat(cat,btn){
+  document.querySelectorAll('#add-cat-tabs .cat-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const products=S.get('pp_products',[]).filter(p=>p.active);
+  const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
+  const el=document.getElementById('add-product-grid');
+  if(el) el.innerHTML=filtered.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
+    <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
+    <div class="pc-name">${p.name}</div>
+    <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
+  </div>`).join('');
+}
+
+function openAddProductOptions(id){
+  const p=S.get('pp_products',[]).find(x=>x.id===id);
+  if(!p)return;
+  const isPizza=p.category==='Pizza';
+  const borders=isPizza?S.get('pp_borders',[]):[];
+  openModal(`<div class="modal">
+    <h3>${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':'🥤'} ${p.name}</h3>
+    ${p.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:16px">${p.description}</p>`:''}
+    <div class="form-row">
+      <label>Tamanho</label>
+      <select id="ap-size">
+        ${p.sizes.map(s=>`<option value="${s.price}" data-name="${s.name}">${s.name} — ${fmt(s.price)}</option>`).join('')}
+      </select>
+    </div>
+    ${isPizza?`<div class="form-row">
+      <label>Borda</label>
+      <select id="ap-border">
+        ${borders.map(b=>`<option value="${b.price}" data-name="${b.name}">${b.name}${b.price>0?' + '+fmt(b.price):''}</option>`).join('')}
+      </select>
+    </div>`:''}
+    <div class="form-row">
+      <label>Quantidade</label>
+      <input id="ap-qty" type="number" value="1" min="1">
+    </div>
+    <div class="form-row">
+      <label>Observação</label>
+      <input id="ap-obs" placeholder="Ex: sem cebola, bem assado...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-red" onclick="addItemToCart(${id})">Adicionar</button>
+    </div>
+  </div>`);
+}
+
+function addItemToCart(id){
+  const p=S.get('pp_products',[]).find(x=>x.id===id);
+  if(!p)return;
+  const sizeEl=document.getElementById('ap-size');
+  const sizeName=sizeEl.options[sizeEl.selectedIndex].dataset.name;
+  const sizePrice=parseFloat(sizeEl.value);
+  const borderEl=document.getElementById('ap-border');
+  const borderName=borderEl?borderEl.options[borderEl.selectedIndex]?.dataset.name:'';
+  const borderPrice=borderEl?parseFloat(borderEl.value)||0:0;
+  const qty=parseInt(document.getElementById('ap-qty').value)||1;
+  const obs=document.getElementById('ap-obs').value;
+  const unitPrice=sizePrice+borderPrice;
+  addItemsCart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
+  closeModal();
+  renderAddCart();
+}
+
+function renderAddCart(){
+  const el=document.getElementById('add-cart-items');
+  if(!el)return;
+  if(addItemsCart.length===0){el.innerHTML='<p style="color:var(--muted);font-size:12px;text-align:center;margin-top:20px">Nenhum item adicionado</p>';
+    document.getElementById('add-cart-total').textContent='R$ 0,00';return;}
+  el.innerHTML=addItemsCart.map((c,i)=>`
+    <div class="cart-item" style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${c.qty}x ${c.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${c.size}${c.border&&c.border!=='Sem Borda'?' · Borda '+c.border:''}${c.obs?' · '+c.obs:''}</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--red)">${fmt(c.price)}</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 6px" onclick="removeAddItem(${i})">✕</button>
+    </div>`).join('');
+  const total=addItemsCart.reduce((s,c)=>s+c.price,0);
+  document.getElementById('add-cart-total').textContent=fmt(total);
+}
+
+function removeAddItem(i){addItemsCart.splice(i,1);renderAddCart();}
+
+function closeAddItemsModal(){
+  addItemsOrderId=null;
+  addItemsCart=[];
+  closeModal();
+}
+
+function confirmAddItems(){
+  if(addItemsCart.length===0){alert('Adicione pelo menos um item');return;}
+  if(!addItemsOrderId){alert('Pedido não encontrado');closeModal();return;}
+  const orders=S.get('pp_orders',[]);
+  const o=orders.find(x=>x.id===addItemsOrderId);
+  if(!o){alert('Pedido não encontrado');closeModal();return;}
+  const newTotal=addItemsCart.reduce((s,c)=>s+c.price,0);
+  // Append new items
+  o.items=o.items.concat(addItemsCart.map(c=>({...c})));
+  o.total=(o.total||0)+newTotal;
+  // If order was already in making/delivery/ready, reset to pending so kitchen sees it
+  if(['making','delivery','ready'].includes(o.status)){
+    o.status='pending';
+  }
+  S.set('pp_orders',orders);
+  addItemsOrderId=null;
+  addItemsCart=[];
+  closeModal();
+  buildSidebar();
+  alert(`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${o.id}!\nTotal atualizado: ${fmt(o.total)}`);
+  navigate(currentPage);
 }
 
 // ============================================================
@@ -1003,7 +1166,10 @@ function viewOrder(id){
     </div>
     ${o.obs?`<p style="margin-top:10px;font-size:13px;color:var(--muted)">📝 ${o.obs}</p>`:''}
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
-    <div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Fechar</button></div>
+    <div class="modal-footer">
+      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue" onclick="closeModal();addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
+      <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
+    </div>
   </div>`);
 }
 
@@ -1051,6 +1217,7 @@ function kitchenCard(o,status){
       ${status==='making'?`<button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="advanceOrder(${o.id})">✅ Pronto</button>`:''}
       ${status==='delivery'?`<span style="color:var(--green);font-size:12px;font-weight:600">Aguardando entregador</span>`:''}
       ${status==='ready'?`<span style="color:var(--green);font-size:12px;font-weight:600">Pronto para ${o.type==='mesa'?'servir':'retirada'}</span>`:''}
+      ${status!=='done'&&status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:6px;justify-content:center;width:100%" onclick="addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
     </div>
   </div>`;
 }
@@ -1076,7 +1243,8 @@ function delivery(el){
         </div>
         <div style="text-align:right">
           ${statusBadge(o.status)}<br><br>
-          ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="advanceOrder(${o.id})">Entregue ✓</button>`:''}
+          ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="advanceOrder(${o.id})">Entregue ✓</button><br>`:''}
+          ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:4px" onclick="addItemToOrder(${o.id})">➕ Itens</button>`:''}
         </div>
       </div>`).join('')}
   </div>`;
