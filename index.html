@@ -454,12 +454,15 @@ let currentPage='';
 const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',account:'Minha Conta'};
 
 function navigate(page){
-  if(!ROLE_PAGES[currentUser.role]?.includes(page)) return;
+  // Allow pdv access when editing an order (adding items), even if role doesn't normally have pdv
+  if(page==='pdv'&&editingOrderId){
+    // bypass role check when adding items to existing order
+  } else if(!ROLE_PAGES[currentUser.role]?.includes(page)) return;
   currentPage=page;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('nav-'+page);
   if(btn) btn.classList.add('active');
-  document.getElementById('page-title').textContent=PAGE_TITLES[page]||page;
+  document.getElementById('page-title').textContent=page==='pdv'&&editingOrderId?`➕ Adicionando Itens — Pedido #${editingOrderId}`:(PAGE_TITLES[page]||page);
   const el=document.getElementById('main-content');
   el.innerHTML='';
   ({dashboard,pdv,orders,tables,delivery,kitchen,products,borders,clients,drivers,users,financeiro,account})[page]?.(el);
@@ -610,6 +613,8 @@ function pdv(el){
   const cats=['Todos',...new Set(products.map(p=>p.category))];
   const isEditing=editingOrderId!==null;
   const existingOrder=isEditing?S.get('pp_orders',[]).find(o=>o.id===editingOrderId):null;
+  // If navigating to pdv normally (not editing), clear editingOrderId
+  if(!isEditing){editingOrderId=null;}
 
   el.innerHTML=`
   <div class="pdv-layout">
@@ -812,7 +817,6 @@ function submitOrder(){
   const client=document.getElementById('cart-client')?.value.trim();
   const addr=document.getElementById('cart-addr')?.value.trim();
   const mesaId=document.getElementById('cart-mesa')?.value;
-  if(!client){alert('Informe o nome do cliente');return;}
   if(cart.length===0){alert('Adicione pelo menos um item');return;}
   const orders=S.get('pp_orders',[]);
   const newItemTotal=cart.reduce((s,c)=>s+c.price,0);
@@ -821,21 +825,28 @@ function submitOrder(){
   if(editingOrderId){
     // Adding items to existing order
     const existingOrder=orders.find(o=>o.id===editingOrderId);
-    if(!existingOrder){alert('Pedido não encontrado');editingOrderId=null;navigate('pdv');return;}
+    if(!existingOrder){alert('Pedido não encontrado');editingOrderId=null;navigate('orders');return;}
     // Append new items to existing order
     existingOrder.items=existingOrder.items.concat(cart.map(c=>({...c})));
     existingOrder.total=(existingOrder.total||0)+newItemTotal;
     if(obs) existingOrder.obs=(existingOrder.obs?existingOrder.obs+' | ':'')+obs;
-    // Reset status to pending so kitchen sees it again
-    existingOrder.status='pending';
+    // If there are new items, reset status to pending so kitchen sees it again
+    // But only if the order was already in making/ready state (so it goes back to kitchen)
+    if(['making','delivery','ready'].includes(existingOrder.status)){
+      existingOrder.status='pending';
+    }
     S.set('pp_orders',orders);
     editingOrderId=null;
     cart=[];
     buildSidebar();
-    alert(`✅ ${newItemTotal?fmt(newItemTotal):'Itens'} adicionados ao Pedido #${existingOrder.id}!`);
-    navigate('orders');
+    alert(`✅ ${newItemTotal?fmt(newItemTotal)+' em novos itens':'Itens'} adicionados ao Pedido #${existingOrder.id}! Total atualizado: ${fmt(existingOrder.total)}`);
+    // Navigate to appropriate page based on role
+    const role=currentUser?.role;
+    const roleDefault={admin:'orders',gerente:'orders',caixa:'orders',entregador:'delivery',cozinha:'kitchen'}[role]||'orders';
+    navigate(roleDefault);
   } else {
     // New order
+    if(!client){alert('Informe o nome do cliente');return;}
     if(orderType==='delivery'&&!addr){alert('Informe o endereço de entrega');return;}
     if(orderType==='mesa'&&!mesaId){alert('Selecione uma mesa');return;}
     orders.push({id:nextId(orders),client,address:addr,type:orderType,tableId:orderType==='mesa'?parseInt(mesaId):null,items:cart.map(c=>({...c})),total:newItemTotal,payment:selectedPayment,obs,status:'pending',createdAt:now(),createdBy:currentUser.username});
@@ -855,7 +866,10 @@ function submitOrder(){
 
 function cancelEditing(){
   editingOrderId=null;
-  navigate('pdv');
+  // Navigate back to the user's default page based on role
+  const role=currentUser?.role;
+  const defaultP={admin:'orders',gerente:'orders',caixa:'orders',entregador:'delivery',cozinha:'kitchen'}[role]||'orders';
+  navigate(defaultP);
 }
 
 function addItemToOrder(id){
@@ -863,6 +877,7 @@ function addItemToOrder(id){
   if(!o)return;
   if(o.status==='done'||o.status==='cancelled'){alert('Este pedido já foi concluído/cancelado');return;}
   editingOrderId=id;
+  // Navigate to pdv for editing - the role bypass is in navigate()
   navigate('pdv');
 }
 
