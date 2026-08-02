@@ -984,11 +984,10 @@ function viewOrder(id){
     ${o.obs?`<p style="margin-top:10px;font-size:13px;color:var(--muted)">📝 ${o.obs}</p>`:''}
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
     ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
-    ${o.type==='mesa'?`<div class="modal-footer">
+    <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
-      <button class="btn btn-red" onclick="addItemsToTableOrder(${o.id})">➕ Adicionar Itens</button>
-    </div>`:
-    `<div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Fechar</button></div>`}
+      ${o.type==='mesa'?`<button class="btn btn-red" onclick="addItemsToTableOrder(${o.id})">➕ Adicionar Itens</button>`:''}
+    </div>
   </div>`);
 }
 
