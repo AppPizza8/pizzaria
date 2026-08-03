@@ -965,10 +965,11 @@ function cancelOrder(id){
   }
 }
 
-function viewOrder(id){
+function viewOrder(id, isTableOrder=false){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
   const tipoLabel=o.type==='mesa'&&o.tableId?`🪑 Mesa ${o.tableId}`:{delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||o.type;
+  const showAddButton=(o.type==='mesa'||o.tableId||isTableOrder);
   openModal(`<div class="modal">
     <h3>Pedido #${o.id} — ${tipoLabel}</h3>
     <p style="color:var(--muted);font-size:13px;margin-bottom:16px">${o.createdAt} — ${o.client}</p>
@@ -986,7 +987,7 @@ function viewOrder(id){
     ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
-      ${o.type==='mesa'?`<button class="btn btn-red" onclick="addItemsToTableOrder(${o.id})">➕ Adicionar Itens</button>`:''}
+      ${showAddButton?`<button class="btn btn-red" onclick="addItemsToTableOrder(${o.id})">➕ Adicionar Itens</button>`:''}
     </div>
   </div>`);
 }
@@ -1089,7 +1090,7 @@ function tables(el){
 function clickMesa(id){
   const orders=S.get('pp_orders',[]);
   const active=orders.find(o=>o.tableId===id&&['pending','making'].includes(o.status));
-  if(active) viewOrder(active.id);
+  if(active) viewOrder(active.id, true);
   else{ navigate('pdv'); setTimeout(()=>{const sel=document.querySelector('[onclick*="setOrderType(\'mesa\'"]');if(sel)sel.click();},100); }
 }
 
