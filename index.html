@@ -130,6 +130,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .badge-pending{background:rgba(240,192,0,.15);color:var(--yellow);border:1px solid rgba(240,192,0,.3)}
 .badge-making{background:rgba(31,111,235,.15);color:#58a6ff;border:1px solid rgba(31,111,235,.3)}
 .badge-delivery{background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
+.badge-ready{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
 .badge-done{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
 .badge-cancelled{background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)}
 .badge-active{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
@@ -507,7 +508,7 @@ function buildSidebar(){
 }
 
 function getBadgeCount(type){
-  if(type==='orders') return S.get('pp_orders',[]).filter(o=>o.status==='pending'||o.status==='making').length;
+  if(type==='orders') return S.get('pp_orders',[]).filter(o=>o.status==='pending'||o.status==='making'||o.status==='ready'||o.status==='delivery').length;
   return 0;
 }
 
@@ -518,8 +519,11 @@ function toggleSidebar(){
 let currentPage='';
 const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',settings:'Configurações',account:'Minha Conta'};
 
+let editingOrderId=null;
+
 function navigate(page){
-  if(!ROLE_PAGES[currentUser.role]?.includes(page)) return;
+  if(page==='pdv'&&editingOrderId){}
+  else if(!ROLE_PAGES[currentUser.role]?.includes(page)) return;
   currentPage=page;
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('nav-'+page);
@@ -539,7 +543,7 @@ function now(){return new Date().toLocaleString('pt-BR');}
 function today(){return new Date().toLocaleDateString('pt-BR');}
 
 function statusBadge(s){
-  const m={pending:['badge-pending','⏳ Aguardando'],making:['badge-making','🔥 Preparando'],delivery:['badge-delivery','🛵 Em Entrega'],done:['badge-done','✅ Entregue'],cancelled:['badge-cancelled','❌ Cancelado']};
+  const m={pending:['badge-pending','⏳ Aguardando'],making:['badge-making','🔥 Preparando'],delivery:['badge-delivery','🛵 Em Entrega'],ready:['badge-ready','✅ Pronto'],done:['badge-done','✅ Entregue'],cancelled:['badge-cancelled','❌ Cancelado']};
   const[c,l]=m[s]||['',''];
   return `<span class="badge ${c}">${l}</span>`;
 }
@@ -551,6 +555,7 @@ function showAlert(id,type,msg){
 }
 
 function closeModal(){document.querySelectorAll('.modal-overlay').forEach(m=>m.remove());}
+function closeLastModal(){const m=document.querySelectorAll('.modal-overlay');if(m.length)m[m.length-1].remove();}
 
 function openModal(html){
   const d=document.createElement('div');
@@ -573,7 +578,7 @@ function dashboard(el){
   const monthSales=monthOrders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.total||0),0);
   const costs=monthSales*0.45;
   const profit=monthSales-costs;
-  const active=orders.filter(o=>['pending','making','delivery'].includes(o.status)).length;
+  const active=orders.filter(o=>['pending','making','delivery','ready'].includes(o.status)).length;
   const delivered=orders.filter(o=>o.status==='done').length;
   const cancelled=orders.filter(o=>o.status==='cancelled').length;
 
@@ -776,7 +781,7 @@ function openProductOptions(id){
       <input id="po-obs" placeholder="Ex: sem cebola, bem assado...">
     </div>
     <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-gray" onclick="closeLastModal()">Cancelar</button>
       <button class="btn btn-red" onclick="addToCart(${id})">Adicionar ao Carrinho</button>
     </div>
   </div>`);
@@ -794,8 +799,8 @@ function addToCart(id){
   const qty=parseInt(document.getElementById('po-qty').value)||1;
   const obs=document.getElementById('po-obs').value;
   const unitPrice=sizePrice+borderPrice;
-  cart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
-  closeModal();
+    cart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
+  closeLastModal();
   renderCart();
 }
 
@@ -893,16 +898,17 @@ function orders(el){
     <button class="cat-tab" onclick="filterOrders('pending',this)">⏳ Aguardando (${allOrders.filter(o=>o.status==='pending').length})</button>
     <button class="cat-tab" onclick="filterOrders('making',this)">🔥 Preparando (${allOrders.filter(o=>o.status==='making').length})</button>
     <button class="cat-tab" onclick="filterOrders('delivery',this)">🛵 Em Entrega (${allOrders.filter(o=>o.status==='delivery').length})</button>
+    <button class="cat-tab" onclick="filterOrders('ready',this)">✅ Pronto (${allOrders.filter(o=>o.status==='ready').length})</button>
     <button class="cat-tab" onclick="filterOrders('done',this)">✅ Entregues (${allOrders.filter(o=>o.status==='done').length})</button>
   </div>
   <div class="table-box">
-    <table><thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th>Criado</th><th>Ações</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Mesa</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th>Criado</th><th>Ações</th></tr></thead>
     <tbody id="orders-tbody">${renderOrdersRows(allOrders)}</tbody></table>
   </div>`;
 }
 
 function renderOrdersRows(list){
-  if(!list.length) return '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px">Nenhum pedido</td></tr>';
+  if(!list.length) return '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:30px">Nenhum pedido</td></tr>';
   const typeLabel={delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'};
   const typeLabelFull=o=>{ if(o.type==='mesa'&&o.tableId) return `🪑 Mesa ${o.tableId}`; return typeLabel[o.type]||o.type||'-'; };
   const payLabel={dinheiro:'💵',cartao:'💳',pix:'📱'};
@@ -910,13 +916,15 @@ function renderOrdersRows(list){
     <td><strong>#${o.id}</strong></td>
     <td>${o.client}</td>
     <td>${typeLabelFull(o)}</td>
+    <td>${o.tableId?`<span class="badge badge-dine">Mesa ${o.tableId}</span>`:'-'}</td>
     <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items?.map(i=>`${i.qty}x ${i.name}`).join(', ')||'-'}</td>
     <td><strong>${fmt(o.total)}</strong></td>
     <td>${payLabel[o.payment]||''} ${o.payment||'-'}</td>
     <td>${statusBadge(o.status)}</td>
     <td style="font-size:12px;color:var(--muted)">${o.createdAt}</td>
     <td class="row-actions">
-      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue btn-xs" onclick="advanceOrder(${o.id})">Avançar →</button>`:''}
+      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue btn-xs" onclick="advanceOrder(${o.id})">${o.status==='ready'?'Concluir ✓':'Avançar →'}</button>`:''}
+      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="addItemToOrder(${o.id})">➕</button>`:''}
       <button class="btn btn-gray btn-xs" onclick="viewOrder(${o.id})">👁</button>
       ${currentUser.role==='admin'||currentUser.role==='gerente'?`<button class="btn btn-xs" style="background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)" onclick="cancelOrder(${o.id})">✕</button>`:''}
     </td>
@@ -943,11 +951,16 @@ function advanceOrder(id){
   const orders=S.get('pp_orders',[]);
   const o=orders.find(x=>x.id===id);
   if(!o)return;
-  const flow=['pending','making','delivery','done'];
+  let flow;
+  if(o.type==='delivery'){
+    flow=['pending','making','delivery','done'];
+  } else {
+    flow=['pending','making','ready','done'];
+  }
   const idx=flow.indexOf(o.status);
   if(idx<flow.length-1){
     o.status=flow[idx+1];
-    if(o.status==='done') freeTableFromOrder(o);
+    if(o.status==='done'&&o.tableId) freeTableFromOrder(o);
     S.set('pp_orders',orders);
     buildSidebar();navigate(currentPage);
   }
@@ -965,11 +978,10 @@ function cancelOrder(id){
   }
 }
 
-function viewOrder(id, isTableOrder=false){
+function viewOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
   const tipoLabel=o.type==='mesa'&&o.tableId?`🪑 Mesa ${o.tableId}`:{delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||o.type;
-  const showAddButton=(o.type==='mesa'||o.tableId||isTableOrder);
   openModal(`<div class="modal">
     <h3>Pedido #${o.id} — ${tipoLabel}</h3>
     <p style="color:var(--muted);font-size:13px;margin-bottom:16px">${o.createdAt} — ${o.client}</p>
@@ -986,8 +998,8 @@ function viewOrder(id, isTableOrder=false){
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
     ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
     <div class="modal-footer">
+      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue" onclick="closeModal();addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
       <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
-      ${showAddButton?`<button class="btn btn-red" onclick="addItemsToTableOrder(${o.id})">➕ Adicionar Itens</button>`:''}
     </div>
   </div>`);
 }
@@ -999,7 +1011,7 @@ function kitchen(el){
   const orders=S.get('pp_orders',[]);
   const pending=orders.filter(o=>o.status==='pending');
   const making=orders.filter(o=>o.status==='making');
-  const ready=orders.filter(o=>o.status==='delivery');
+  const ready=orders.filter(o=>o.status==='ready'||o.status==='delivery');
 
   el.innerHTML=`
   <div class="page-header" style="margin-bottom:16px">
@@ -1009,29 +1021,33 @@ function kitchen(el){
   <div class="kitchen-cols">
     <div>
       <div class="kitchen-col-title kc-pending">⏳ Aguardando (${pending.length})</div>
-      ${pending.map(o=>kitchenCard(o,'pending')).join('')||'<p style="color:var(--muted);font-size:13px;text-align:center">Nenhum</p>'}
+      ${pending.map(o=>kitchenCard(o,o.status)).join('')||'<p style="color:var(--muted);font-size:13px;text-align:center">Nenhum</p>'}
     </div>
     <div>
       <div class="kitchen-col-title kc-making">🔥 Preparando (${making.length})</div>
-      ${making.map(o=>kitchenCard(o,'making')).join('')||'<p style="color:var(--muted);font-size:13px;text-align:center">Nenhum</p>'}
+      ${making.map(o=>kitchenCard(o,o.status)).join('')||'<p style="color:var(--muted);font-size:13px;text-align:center">Nenhum</p>'}
     </div>
     <div>
       <div class="kitchen-col-title kc-ready">✅ Pronto (${ready.length})</div>
-      ${ready.map(o=>kitchenCard(o,'delivery')).join('')||'<p style="color:var(--muted);font-size:13px;text-align:center">Nenhum</p>'}
+      ${ready.map(o=>kitchenCard(o,o.status)).join('')||'<p style="color:var(--muted);font-size:13px;text-align:center">Nenhum</p>'}
     </div>
   </div>`;
 }
 
 function kitchenCard(o,status){
+  const mesaInfo=o.tableId?`<span class="badge badge-dine">Mesa ${o.tableId}</span>`:'';
+  const typeBadge={delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||'';
   return `<div class="kitchen-card ${status==='pending'&&(new Date()-new Date(o.createdAt.split(', ').join(' ')))>600000?'urgent':''}">
-    <h4><span>#${o.id} — ${o.client}</span>${statusBadge(o.status)}</h4>
+    <h4><span>#${o.id} — ${o.client} ${typeBadge} ${mesaInfo}</span>${statusBadge(o.status)}</h4>
     <div class="kc-items">${o.items?.map(i=>`• ${i.qty}x ${i.name} (${i.size||''}${i.border&&i.border!=='Sem Borda'?' | Borda '+i.border:''})`).join('<br>')||''}</div>
     ${o.obs?`<div style="font-size:11px;color:var(--orange);margin-bottom:8px">📝 ${o.obs}</div>`:''}
     <div class="kc-time">⏱ ${o.createdAt}</div>
-    <div style="display:flex;gap:6px">
+    <div style="display:flex;gap:6px;flex-direction:column">
       ${status==='pending'?`<button class="btn btn-blue btn-sm" style="flex:1;justify-content:center" onclick="advanceOrder(${o.id})">🔥 Iniciar</button>`:''}
       ${status==='making'?`<button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="advanceOrder(${o.id})">✅ Pronto</button>`:''}
       ${status==='delivery'?`<span style="color:var(--green);font-size:12px;font-weight:600">Aguardando entregador</span>`:''}
+      ${status==='ready'?`<span style="color:var(--green);font-size:12px;font-weight:600">Pronto para ${o.type==='mesa'?'servir':'retirada'}</span>`:''}
+      ${status!=='done'&&status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:6px;justify-content:center;width:100%" onclick="addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
     </div>
   </div>`;
 }
@@ -1042,8 +1058,6 @@ function kitchenCard(o,status){
 function delivery(el){
   const orders=S.get('pp_orders',[]).filter(o=>o.type==='delivery');
   el.innerHTML=`
-  let currentTableId=null;
-
   <div class="page-header" style="margin-bottom:16px">
     <h2>🛵 Delivery</h2>
     <button class="btn btn-gray btn-sm" onclick="navigate('delivery')">↻ Atualizar</button>
@@ -1059,7 +1073,8 @@ function delivery(el){
         </div>
         <div style="text-align:right">
           ${statusBadge(o.status)}<br><br>
-          ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="advanceOrder(${o.id})">Entregue ✓</button>`:''}
+          ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="advanceOrder(${o.id})">Entregue ✓</button><br>`:''}
+          ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:4px" onclick="addItemToOrder(${o.id})">➕ Itens</button>`:''}
         </div>
       </div>`).join('')}
   </div>`;
@@ -1078,10 +1093,11 @@ function tables(el){
   </div>
   <div class="mesas-grid">
     ${mesas.map(m=>{
-      const activeOrder=orders.find(o=>o.tableId===m.id&&['pending','making'].includes(o.status));
+      const activeOrder=orders.find(o=>o.tableId===m.id&&['pending','making','delivery','ready'].includes(o.status));
       return `<div class="mesa-card ${activeOrder?'occupied':'free'}" onclick="clickMesa(${m.id})">
         <div class="mesa-num">Mesa ${m.id}</div>
-        <div class="mesa-status">${activeOrder?'Ocupada':'Livre'}</div>
+        <div class="mesa-status">${activeOrder?'Ped. #'+activeOrder.id:'Livre'}</div>
+        ${activeOrder?`<div style="font-size:11px;margin-top:4px">${statusBadge(activeOrder.status)}</div>`:''}
         ${activeOrder?`<div style="font-size:11px;margin-top:4px;color:var(--red)">${fmt(activeOrder.total)}</div>`:''}
       </div>`;}).join('')}
   </div>`;
@@ -1089,9 +1105,22 @@ function tables(el){
 
 function clickMesa(id){
   const orders=S.get('pp_orders',[]);
-  const active=orders.find(o=>o.tableId===id&&['pending','making'].includes(o.status));
-  if(active) viewOrder(active.id, true);
-  else{ navigate('pdv'); setTimeout(()=>{const sel=document.querySelector('[onclick*="setOrderType(\'mesa\'"]');if(sel)sel.click();},100); }
+  const active=orders.find(o=>o.tableId===id&&['pending','making','delivery','ready'].includes(o.status));
+  if(active){
+    openModal(`<div class="modal">
+      <h3>🪑 Mesa ${id} — Pedido #${active.id}</h3>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Cliente: ${active.client} — ${statusBadge(active.status)}</p>
+      <p style="font-size:13px;margin-bottom:20px">Total atual: <strong style="color:var(--red)">${fmt(active.total)}</strong></p>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-gray" style="flex:1;justify-content:center" onclick="closeModal();viewOrder(${active.id})">👁 Ver Pedido</button>
+        <button class="btn btn-blue" style="flex:1;justify-content:center" onclick="closeModal();addItemToOrder(${active.id})">➕ Adicionar Itens</button>
+      </div>
+      <div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Fechar</button></div>
+    </div>`);
+  } else {
+    navigate('pdv');
+    setTimeout(()=>{const sel=document.querySelector('[onclick*="setOrderType(\'mesa\'"]');if(sel)sel.click();},100);
+  }
 }
 
 // ============================================================
@@ -1596,73 +1625,176 @@ function saveAccount(){
 
 
 // ============================================================
-// NEW: Add items to existing table order
-// ============================================================
-function addItemsToTableOrder(orderId){
-  const orders=S.get('pp_orders',[]);
-  const order=orders.find(x=>x.id===orderId);
-  if(!order)return;
-  
-  closeModal();
-  currentTableId=order.tableId;
-  cart=[];
-  orderType='mesa';
-  selectedPayment='dinheiro';
-  
-  const products=S.get('pp_products',[]).filter(p=>p.active);
-  const cats=['Todos',...new Set(products.map(p=>p.category))];
+// ============ ADD ITEMS TO ORDER (Modal-based, works from any page/role) ============
+let addItemsOrderId=null;
+let addItemsCart=[];
 
-  const el=document.getElementById('main-content');
-  el.innerHTML=`
-  <div style="margin-bottom:16px">
-    <button class="btn btn-gray" onclick="navigate('orders')">← Voltar</button>
-    <span style="margin-left:16px;font-size:14px;color:var(--yellow)">⚠️ Adicionando itens ao Pedido #${orderId} (Mesa ${order.tableId})</span>
-  </div>
-  <div class="pdv-layout">
-    <div class="pdv-products">
-      <input class="product-search" placeholder="🔍 Buscar produto..." oninput="filterProducts(this.value)">
-      <div class="cat-tabs">
-        ${cats.map(c=>`<button class="cat-tab ${c==='Todos'?'active':''}" onclick="filterCat('${c}',this)">${c}</button>`).join('')}
-      </div>
-      <div class="product-grid" id="product-grid">
-        ${products.map(p=>productCard(p)).join('')}
-      </div>
-    </div>
-    <div class="pdv-cart">
-      <h3 style="margin-bottom:14px;font-size:15px">🛒 Itens a Adicionar</h3>
-      <div class="cart-items" id="cart-items"><p style="color:var(--muted);font-size:13px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
-      <div class="cart-total-box">
-        <div class="cart-total-row"><span style="color:var(--muted)">Subtotal</span><span id="cart-sub">R$ 0,00</span></div>
-        <div class="cart-total-row big"><span>Total</span><span id="cart-total-val" style="color:var(--red)">R$ 0,00</span></div>
-        <textarea class="cart-obs" id="cart-obs" rows="2" placeholder="Observações adicionais..."></textarea>
-        <button class="btn btn-red" style="width:100%;justify-content:center;padding:12px;margin-bottom:8px" onclick="addItemsToExistingOrder(${orderId})">✅ Adicionar Itens</button>
-        <button class="btn btn-gray" style="width:100%;justify-content:center;padding:12px" onclick="navigate('orders')">❌ Cancelar</button>
-      </div>
-    </div>
-  </div>`;
+function addItemToOrder(id){
+  const o=S.get('pp_orders',[]).find(x=>x.id===id);
+  if(!o)return;
+  if(o.status==='done'||o.status==='cancelled'){alert('Este pedido já foi concluído/cancelado');return;}
+  addItemsOrderId=id;
+  addItemsCart=[];
+  openAddItemsModal(o);
 }
 
-function addItemsToExistingOrder(orderId){
-  if(cart.length===0){alert('Adicione pelo menos um item');return;}
-  
+function openAddItemsModal(o){
+  const products=S.get('pp_products',[]).filter(p=>p.active);
+  const cats=['Todos',...new Set(products.map(p=>p.category))];
+  openModal(`<div class="modal modal-lg" style="width:800px">
+    <h3>➕ Adicionar Itens — Pedido #${o.id} (${o.client})</h3>
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
+      <div>
+        <input class="product-search" placeholder="🔍 Buscar produto..." oninput="filterAddProducts(this.value)">
+        <div class="cat-tabs" id="add-cat-tabs">
+          ${cats.map(c=>`<button class="cat-tab ${c==='Todos'?'active':''}" onclick="filterAddCat('${c}',this)">${c}</button>`).join('')}
+        </div>
+        <div class="product-grid" id="add-product-grid">
+          ${products.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
+            <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
+            <div class="pc-name">${p.name}</div>
+            <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:400px;overflow-y:auto">
+        <h4 style="font-size:13px;margin-bottom:10px;color:var(--muted)">🛒 Novos Itens</h4>
+        <div id="add-cart-items"><p style="color:var(--muted);font-size:12px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
+        <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700">
+          <span>Total adicional:</span>
+          <span id="add-cart-total" style="color:var(--red)">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeAddItemsModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="confirmAddItems()" style="background:var(--green)">✅ Confirmar Adição</button>
+    </div>
+  </div>`);
+}
+
+function filterAddProducts(q){
+  const products=S.get('pp_products',[]).filter(p=>p.active&&p.name.toLowerCase().includes(q.toLowerCase()));
+  const el=document.getElementById('add-product-grid');
+  if(el) el.innerHTML=products.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
+    <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
+    <div class="pc-name">${p.name}</div>
+    <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
+  </div>`).join('');
+}
+
+function filterAddCat(cat,btn){
+  document.querySelectorAll('#add-cat-tabs .cat-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const products=S.get('pp_products',[]).filter(p=>p.active);
+  const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
+  const el=document.getElementById('add-product-grid');
+  if(el) el.innerHTML=filtered.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
+    <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
+    <div class="pc-name">${p.name}</div>
+    <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
+  </div>`).join('');
+}
+
+function openAddProductOptions(id){
+  const p=S.get('pp_products',[]).find(x=>x.id===id);
+  if(!p)return;
+  const isPizza=p.category==='Pizza';
+  const borders=isPizza?S.get('pp_borders',[]):[];
+  openModal(`<div class="modal">
+    <h3>${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':'🥤'} ${p.name}</h3>
+    ${p.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:16px">${p.description}</p>`:''}
+    <div class="form-row">
+      <label>Tamanho</label>
+      <select id="ap-size">
+        ${p.sizes.map(s=>`<option value="${s.price}" data-name="${s.name}">${s.name} — ${fmt(s.price)}</option>`).join('')}
+      </select>
+    </div>
+    ${isPizza?`<div class="form-row">
+      <label>Borda</label>
+      <select id="ap-border">
+        ${borders.map(b=>`<option value="${b.price}" data-name="${b.name}">${b.name}${b.price>0?' + '+fmt(b.price):''}</option>`).join('')}
+      </select>
+    </div>`:''}
+    <div class="form-row">
+      <label>Quantidade</label>
+      <input id="ap-qty" type="number" value="1" min="1">
+    </div>
+    <div class="form-row">
+      <label>Observação</label>
+      <input id="ap-obs" placeholder="Ex: sem cebola, bem assado...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeLastModal()">Cancelar</button>
+      <button class="btn btn-red" onclick="addItemToCart(${id})">Adicionar</button>
+    </div>
+  </div>`);
+}
+
+function addItemToCart(id){
+  const p=S.get('pp_products',[]).find(x=>x.id===id);
+  if(!p)return;
+  const sizeEl=document.getElementById('ap-size');
+  const sizeName=sizeEl.options[sizeEl.selectedIndex].dataset.name;
+  const sizePrice=parseFloat(sizeEl.value);
+  const borderEl=document.getElementById('ap-border');
+  const borderName=borderEl?borderEl.options[borderEl.selectedIndex]?.dataset.name:'';
+  const borderPrice=borderEl?parseFloat(borderEl.value)||0:0;
+  const qty=parseInt(document.getElementById('ap-qty').value)||1;
+  const obs=document.getElementById('ap-obs').value;
+  const unitPrice=sizePrice+borderPrice;
+  addItemsCart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
+  closeLastModal();
+  renderAddCart();
+}
+
+function renderAddCart(){
+  const el=document.getElementById('add-cart-items');
+  if(!el)return;
+  if(addItemsCart.length===0){el.innerHTML='<p style="color:var(--muted);font-size:12px;text-align:center;margin-top:20px">Nenhum item adicionado</p>';
+    document.getElementById('add-cart-total').textContent='R$ 0,00';return;}
+  el.innerHTML=addItemsCart.map((c,i)=>`
+    <div class="cart-item" style="padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${c.qty}x ${c.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${c.size}${c.border&&c.border!=='Sem Borda'?' · Borda '+c.border:''}${c.obs?' · '+c.obs:''}</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--red)">${fmt(c.price)}</div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:2px 6px" onclick="removeAddItem(${i})">✕</button>
+    </div>`).join('');
+  const total=addItemsCart.reduce((s,c)=>s+c.price,0);
+  document.getElementById('add-cart-total').textContent=fmt(total);
+}
+
+function removeAddItem(i){addItemsCart.splice(i,1);renderAddCart();}
+
+function closeAddItemsModal(){
+  addItemsOrderId=null;
+  addItemsCart=[];
+  closeModal();
+}
+
+function confirmAddItems(){
+  if(addItemsCart.length===0){alert('Adicione pelo menos um item');return;}
+  if(!addItemsOrderId){alert('Pedido não encontrado');closeModal();return;}
   const orders=S.get('pp_orders',[]);
-  const order=orders.find(x=>x.id===orderId);
-  if(!order)return;
-  
-  const addedTotal=cart.reduce((s,c)=>s+c.price,0);
-  const obs=document.getElementById('cart-obs')?.value;
-  
-  order.items.push(...cart.map(c=>({...c})));
-  order.total+=addedTotal;
-  if(obs) order.obs=(order.obs||'')+'
-'+obs;
-  
+  const o=orders.find(x=>x.id===addItemsOrderId);
+  if(!o){alert('Pedido não encontrado');closeModal();return;}
+  const newTotal=addItemsCart.reduce((s,c)=>s+c.price,0);
+  // Append new items
+  o.items=o.items.concat(addItemsCart.map(c=>({...c})));
+  o.total=(o.total||0)+newTotal;
+  // If order was already in making/delivery/ready, reset to pending so kitchen sees it
+  if(['making','delivery','ready'].includes(o.status)){
+    o.status='pending';
+  }
   S.set('pp_orders',orders);
-  cart=[];
-  currentTableId=null;
+  addItemsOrderId=null;
+  addItemsCart=[];
+  closeLastModal();
   buildSidebar();
-  alert(`✅ Itens adicionados ao Pedido #${orderId}!`);
-  navigate('orders');
+  alert(`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${o.id}!\nTotal atualizado: ${fmt(o.total)}`);
+  navigate(currentPage);
 }
 
 // ============================================================
