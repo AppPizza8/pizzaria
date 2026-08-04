@@ -417,48 +417,55 @@ function initData(){
       {id:5,name:'Brigadeiro',price:6.00},
     ]);
   }
-  if(!S.get('pp_products',null)){
-    S.set('pp_products',[
-      // TRADICIONAIS
-      {id:1,name:'Calabresa',category:'Tradicionais',description:'Molho, mussarela, calabresa, cebola',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      {id:2,name:'Bacon',category:'Tradicionais',description:'Molho, mussarela, bacon, cebola',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      {id:3,name:'Frango Catupiry',category:'Tradicionais',description:'Molho, mussarela, frango, catupiry',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      {id:4,name:'Moda da Casa',category:'Tradicionais',description:'Molho, mussarela, presunto, carne de hambúrguer, tomate, cebola, milho',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      {id:5,name:'Mista',category:'Tradicionais',description:'Molho, mussarela, presunto, tomate, cebola, milho',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      {id:6,name:'Frango',category:'Tradicionais',description:'Molho, mussarela, frango, tomate, cebola',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      {id:7,name:'Portuguesa',category:'Tradicionais',description:'Molho, mussarela, presunto, tomate, cebola, ovo, pimentão, milho',active:true,
-       sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
-      
-      // CLÁSSICAS
-      {id:8,name:'Calabacon',category:'Clássicas',description:'Molho, mussarela, calabresa, bacon, tomate, cebola, milho, azeitona',active:true,
-       sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
-      {id:9,name:'Moda do Chefe',category:'Clássicas',description:'Molho, mussarela, calabresa, alho frito',active:true,
-       sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
-      {id:10,name:'Franbacon',category:'Clássicas',description:'Molho, mussarela, frango, bacon, tomate, cebola, milho, azeitona',active:true,
-       sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
-      {id:11,name:'4 Queijos',category:'Clássicas',description:'Molho, mussarela, queijo minas, queijo coalho, parmesão',active:true,
-       sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
+  const newProducts = [
+    // TRADICIONAIS
+    {id:1,name:'Calabresa',category:'Tradicionais',description:'Molho, mussarela, calabresa, cebola',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    {id:2,name:'Bacon',category:'Tradicionais',description:'Molho, mussarela, bacon, cebola',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    {id:3,name:'Frango Catupiry',category:'Tradicionais',description:'Molho, mussarela, frango, catupiry',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    {id:4,name:'Moda da Casa',category:'Tradicionais',description:'Molho, mussarela, presunto, carne de hambúrguer, tomate, cebola, milho',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    {id:5,name:'Mista',category:'Tradicionais',description:'Molho, mussarela, presunto, tomate, cebola, milho',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    {id:6,name:'Frango',category:'Tradicionais',description:'Molho, mussarela, frango, tomate, cebola',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    {id:7,name:'Portuguesa',category:'Tradicionais',description:'Molho, mussarela, presunto, tomate, cebola, ovo, pimentão, milho',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
+    
+    // CLÁSSICAS
+    {id:8,name:'Calabacon',category:'Clássicas',description:'Molho, mussarela, calabresa, bacon, tomate, cebola, milho, azeitona',active:true,
+     sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
+    {id:9,name:'Moda do Chefe',category:'Clássicas',description:'Molho, mussarela, calabresa, alho frito',active:true,
+     sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
+    {id:10,name:'Franbacon',category:'Clássicas',description:'Molho, mussarela, frango, bacon, tomate, cebola, milho, azeitona',active:true,
+     sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
+    {id:11,name:'4 Queijos',category:'Clássicas',description:'Molho, mussarela, queijo minas, queijo coalho, parmesão',active:true,
+     sizes:[{name:'P',price:30.00},{name:'M',price:53.00},{name:'G',price:62.00}]},
 
-      // ESPECIAIS
-      {id:12,name:'Nordestina',category:'Especiais',description:'Creme cheese, carne de sol, mussarela, queijo coalho, cebola roxa',active:true,
-       sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
-      {id:13,name:'Carne de Sol na Nata',category:'Especiais',description:'Nata, carne de sol, mussarela, cebola',active:true,
-       sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
-      {id:14,name:'Carne de Sol',category:'Especiais',description:'Molho, mussarela, carne de sol, cebola',active:true,
-       sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
-      {id:15,name:'Camarão',category:'Especiais',description:'Molho, mussarela, filé de camarão refogado no alho e óleo, cebola',active:true,
-       sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
-      {id:16,name:'Camarão com Catupiry',category:'Especiais',description:'Molho, mussarela, filé de camarão refogado no alho e óleo, catupiry',active:true,
-       sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
-      {id:17,name:'Camarão com Creme Cheese',category:'Especiais',description:'Creme cheese, mussarela, filé de camarão refogado no alho e óleo, cebola',active:true,
-       sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
-    ]);
+    // ESPECIAIS
+    {id:12,name:'Nordestina',category:'Especiais',description:'Creme cheese, carne de sol, mussarela, queijo coalho, cebola roxa',active:true,
+     sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+    {id:13,name:'Carne de Sol na Nata',category:'Especiais',description:'Nata, carne de sol, mussarela, cebola',active:true,
+     sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+    {id:14,name:'Carne de Sol',category:'Especiais',description:'Molho, mussarela, carne de sol, cebola',active:true,
+     sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+    {id:15,name:'Camarão',category:'Especiais',description:'Molho, mussarela, filé de camarão refogado no alho e óleo, cebola',active:true,
+     sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+    {id:16,name:'Camarão com Catupiry',category:'Especiais',description:'Molho, mussarela, filé de camarão refogado no alho e óleo, catupiry',active:true,
+     sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+    {id:17,name:'Camarão com Creme Cheese',category:'Especiais',description:'Creme cheese, mussarela, filé de camarão refogado no alho e óleo, cebola',active:true,
+     sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+  ];
+
+  // Forçar atualização se o menu for o antigo ou se não houver produtos
+  const currentProducts = S.get('pp_products', []);
+  const isOldMenu = currentProducts.length === 0 || currentProducts.some(p => p.name === 'Margherita' && p.sizes && p.sizes[0].price === 26);
+  
+  if (isOldMenu || !S.get('pp_products_v3')) {
+    S.set('pp_products', newProducts);
+    S.set('pp_products_v3', '1'); // Marca que já atualizou para o novo menu
   }
 }
 
