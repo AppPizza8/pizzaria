@@ -616,7 +616,135 @@ function products(el){ el.innerHTML='<h2>Produtos</h2>'; }
 function borders(el){ el.innerHTML='<h2>Bordas</h2>'; }
 function clients(el){ el.innerHTML='<h2>Clientes</h2>'; }
 function users(el){ el.innerHTML='<h2>Usuários</h2>'; }
-function financeiro(el){ el.innerHTML='<h2>Financeiro</h2>'; }
+function financeiro(el){
+  const orders = S.get('pp_orders', []).filter(o => o.status === 'done');
+  const total = orders.reduce((s, o) => s + (o.total || 0), 0);
+  
+  const byPayment = { dinheiro: 0, cartao: 0, pix: 0 };
+  orders.forEach(o => {
+    if (Array.isArray(o.payment)) {
+      o.payment.forEach(p => { if (byPayment[p.type] !== undefined) byPayment[p.type] += p.value; });
+    } else if (byPayment[o.payment] !== undefined) {
+      byPayment[o.payment] += o.total || 0;
+    }
+  });
+
+  const cost = total * 0.45; // Exemplo de custo 45%
+  const profit = total - cost;
+
+  el.innerHTML = `
+    <div class="page-header">
+      <h2>💰 Financeiro / Relatórios</h2>
+      <button class="btn btn-blue btn-sm" onclick="printFinancialReport()">🖨️ Imprimir Relatório</button>
+    </div>
+    
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-icon" style="background:rgba(31,111,235,.15)">💵</div>
+        <div><div class="metric-val">${fmt(total)}</div><div class="metric-label">Faturamento Total</div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon" style="background:rgba(230,57,70,.15)">📉</div>
+        <div><div class="metric-val">${fmt(cost)}</div><div class="metric-label">Custo Est. (45%)</div></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon" style="background:rgba(46,160,67,.15)">📈</div>
+        <div><div class="metric-val">${fmt(profit)}</div><div class="metric-label">Lucro Estimado</div></div>
+      </div>
+    </div>
+
+    <div class="chart-row" style="margin-top:20px">
+      <div class="chart-box">
+        <h3>Resumo por Forma de Pagamento</h3>
+        <table style="margin-top:10px">
+          <tr><td>💵 Dinheiro</td><td style="text-align:right"><strong>${fmt(byPayment.dinheiro)}</strong></td></tr>
+          <tr><td>💳 Cartão</td><td style="text-align:right"><strong>${fmt(byPayment.cartao)}</strong></td></tr>
+          <tr><td>📱 Pix</td><td style="text-align:right"><strong>${fmt(byPayment.pix)}</strong></td></tr>
+          <tr style="border-top:2px solid var(--border)">
+            <td><strong>TOTAL GERAL</strong></td>
+            <td style="text-align:right; color:var(--red)"><strong>${fmt(total)}</strong></td>
+          </tr>
+        </table>
+      </div>
+      <div class="chart-box">
+        <h3>Últimas Vendas Concluídas</h3>
+        <div style="max-height:200px; overflow-y:auto; font-size:12px">
+          ${orders.slice(-10).reverse().map(o => `
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border)">
+              <span>#${o.id} - ${o.client}</span>
+              <strong>${fmt(o.total)}</strong>
+            </div>
+          `).join('') || '<p>Nenhuma venda recente</p>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function printFinancialReport() {
+  const orders = S.get('pp_orders', []).filter(o => o.status === 'done');
+  const total = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const byPayment = { dinheiro: 0, cartao: 0, pix: 0 };
+  orders.forEach(o => {
+    if (Array.isArray(o.payment)) {
+      o.payment.forEach(p => { if (byPayment[p.type] !== undefined) byPayment[p.type] += p.value; });
+    } else if (byPayment[o.payment] !== undefined) {
+      byPayment[o.payment] += o.total || 0;
+    }
+  });
+
+  const el = document.getElementById('print-section');
+  el.innerHTML = `
+    <h2 style="text-align:center">RELATÓRIO FINANCEIRO</h2>
+    <p style="text-align:center">Pizzaria Patrício - Gerado em: ${now()}</p>
+    <hr style="border:none; border-top:1px dashed #000; margin:10px 0">
+    
+    <div style="margin-bottom:15px">
+      <p><strong>RESUMO DE VENDAS:</strong></p>
+      <table style="width:100%">
+        <tr><td>Faturamento Total:</td><td style="text-align:right"><strong>${fmt(total)}</strong></td></tr>
+        <tr><td>Custo Estimado (45%):</td><td style="text-align:right">${fmt(total * 0.45)}</td></tr>
+        <tr><td>Lucro Estimado:</td><td style="text-align:right"><strong>${fmt(total - (total * 0.45))}</strong></td></tr>
+      </table>
+    </div>
+
+    <div style="margin-bottom:15px">
+      <p><strong>POR FORMA DE PAGAMENTO:</strong></p>
+      <table style="width:100%">
+        <tr><td>Dinheiro:</td><td style="text-align:right">${fmt(byPayment.dinheiro)}</td></tr>
+        <tr><td>Cartão:</td><td style="text-align:right">${fmt(byPayment.cartao)}</td></tr>
+        <tr><td>Pix:</td><td style="text-align:right">${fmt(byPayment.pix)}</td></tr>
+      </table>
+    </div>
+
+    <div style="margin-bottom:15px">
+      <p><strong>DETALHE DAS ÚLTIMAS VENDAS:</strong></p>
+      <table style="width:100%; font-size:10px">
+        <thead>
+          <tr style="border-bottom:1px solid #000">
+            <th style="text-align:left">Pedido</th>
+            <th style="text-align:left">Cliente</th>
+            <th style="text-align:right">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orders.slice(-20).reverse().map(o => `
+            <tr>
+              <td>#${o.id}</td>
+              <td>${o.client.substring(0,15)}</td>
+              <td style="text-align:right">${fmt(o.total)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer" style="text-align:center; font-size:10px; margin-top:20px">
+      <p>Fim do Relatório</p>
+    </div>
+  `;
+  window.print();
+}
 function settings(el){ el.innerHTML='<h2>Configurações</h2>'; }
 function account(el){ el.innerHTML='<h2>Conta</h2>'; }
 
