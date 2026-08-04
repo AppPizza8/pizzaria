@@ -408,6 +408,16 @@ function initData(){
     S.set('pp_tables', Array.from({length:12},(_,i)=>({id:i+1,status:'free',orderId:null})));
   }
   if(!S.get('pp_clients',null)) S.set('pp_clients',[]);
+  if(!S.get('pp_settings',null)){
+    S.set('pp_settings', {
+      companyName: 'Pizzaria Patrício',
+      companyCnpj: '',
+      companyPhone: '',
+      companyAddress: '',
+      deliveryFee: 5.00,
+      serviceFee: 0
+    });
+  }
   if(!S.get('pp_borders',null)){
     S.set('pp_borders',[
       {id:1,name:'Sem Borda',price:0},
@@ -1635,56 +1645,90 @@ function financeiro(el){
 function settings(el){
   const fbConfig=localStorage.getItem('pp_firebase_config');
   const cfg=fbConfig?JSON.parse(fbConfig):null;
+  const sett = S.get('pp_settings', {});
+  
   el.innerHTML=`
   <div class="page-header" style="margin-bottom:16px"><h2>⚙️ Configurações do Sistema</h2></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1200px">
     <div class="form-box">
-      <h3 style="margin-bottom:12px;color:var(--red)">☁️ Sincronização em Nuvem (Firebase)</h3>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Configure o Firebase para que <strong>todos os dispositivos</strong> vejam os mesmos pedidos em tempo real.</p>
-      <div id="sync-status-box" style="background:var(--card2);padding:12px;border-radius:8px;margin-bottom:14px;font-size:13px">
-        ${useFirebase?'🟢 <strong>Sincronização ATIVA</strong> — Pedidos, mesas, produtos são compartilhados entre todos os dispositivos.':'📴 <strong>Modo local</strong> — Cada dispositivo tem seus próprios dados.'}
+      <h3 style="margin-bottom:12px;color:var(--blue)">🏢 Dados da Empresa</h3>
+      <div class="form-row"><label>Nome da Pizzaria</label><input id="set-name" value="${sett.companyName||''}"></div>
+      <div class="form-row"><label>CNPJ</label><input id="set-cnpj" value="${sett.companyCnpj||''}"></div>
+      <div class="form-row"><label>Telefone</label><input id="set-phone" value="${sett.companyPhone||''}"></div>
+      <div class="form-row"><label>Endereço Completo</label><input id="set-addr" value="${sett.companyAddress||''}"></div>
+      
+      <h3 style="margin:20px 0 12px;color:var(--green)">💰 Taxas e Valores</h3>
+      <div class="form-cols">
+        <div class="form-row"><label>Taxa de Entrega (R$)</label><input id="set-delivery" type="number" step="0.01" value="${sett.deliveryFee||0}"></div>
+        <div class="form-row"><label>Taxa de Serviço (%)</label><input id="set-service" type="number" step="1" value="${sett.serviceFee||0}"></div>
       </div>
-      <div class="form-row">
-        <label>API Key</label>
-        <input id="fb-apiKey" placeholder="AIzaSy..." value="${cfg?.apiKey||''}">
-      </div>
-      <div class="form-row">
-        <label>Database URL</label>
-        <input id="fb-dbUrl" placeholder="https://seu-app-default-rtdb.firebaseio.com" value="${cfg?.databaseURL||''}">
-      </div>
-      <div class="form-row">
-        <label>Project ID</label>
-        <input id="fb-project" placeholder="seu-app-firebase" value="${cfg?.projectId||''}">
-      </div>
-      <div class="form-row">
-        <label>App ID</label>
-        <input id="fb-appId" placeholder="1:1234...:web:abc..." value="${cfg?.appId||''}">
-      </div>
-      <div id="settings-alert" class="alert"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-red" onclick="saveFirebaseConfig()">☁️ Ativar Sincronização</button>
-        ${useFirebase?`<button class="btn btn-gray" onclick="disableFirebase()">📴 Desativar</button>`:''}
-      </div>
+      <button class="btn btn-blue" onclick="saveGeneralSettings()">💾 Salvar Configurações</button>
     </div>
+
     <div class="form-box">
-      <h3 style="margin-bottom:12px;color:var(--blue)">📖 Como configurar</h3>
-      <ol style="font-size:12.5px;color:var(--muted);line-height:1.7;padding-left:20px">
-        <li>Acesse <strong>console.firebase.google.com</strong></li>
-        <li>Clique em <strong>"Adicionar projeto"</strong></li>
-        <li>Dê um nome (ex: pizzaria-patricio) → Continue</li>
-        <li>No menu lateral: <strong>Realtime Database</strong> → Criar → Iniciar em modo de teste</li>
-        <li>Nas <strong>Regras</strong> cole:
-          <pre style="background:#000;color:#2ea043;padding:8px;border-radius:6px;margin-top:6px;font-size:11px">{ "rules": { ".read": true, ".write": true } }</pre>
-        </li>
-        <li>Volte em <strong>Visão geral do projeto</strong> → Adicionar app → Web (</>)</li>
-        <li>Dê um apelido → Registrar app</li>
-        <li>Copie os valores do <strong>firebaseConfig</strong> e cole nos campos ao lado</li>
-        <li>Clique em <strong>Ativar Sincronização</strong></li>
-      </ol>
-      <p style="font-size:11px;color:var(--muted);margin-top:10px">⏱️ Após ativado, aguarde 30-60 segundos para o primeiro sync.</p>
-      <button class="btn btn-gray btn-sm" onclick="testSync()" style="margin-top:8px">🔄 Testar Conexão</button>
+      <h3 style="margin-bottom:12px;color:var(--red)">☁️ Sincronização (Firebase)</h3>
+      <div id="sync-status-box" style="background:var(--card2);padding:10px;border-radius:8px;margin-bottom:14px;font-size:12px">
+        ${useFirebase?'🟢 Sincronização Ativa':'📴 Modo Local'}
+      </div>
+      <div class="form-row"><label>API Key</label><input id="fb-apiKey" value="${cfg?.apiKey||''}"></div>
+      <div class="form-row"><label>Database URL</label><input id="fb-dbUrl" value="${cfg?.databaseURL||''}"></div>
+      <div class="form-row"><label>Project ID</label><input id="fb-project" value="${cfg?.projectId||''}"></div>
+      <div class="form-row"><label>App ID</label><input id="fb-appId" value="${cfg?.appId||''}"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-red btn-sm" onclick="saveFirebaseConfig()">Ativar</button>
+        ${useFirebase?`<button class="btn btn-gray btn-sm" onclick="disableFirebase()">Desativar</button>`:''}
+      </div>
+
+      <h3 style="margin:20px 0 12px;color:var(--purple)">🛡️ Backup de Segurança</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Baixe ou restaure todos os dados do sistema.</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-gray btn-sm" onclick="exportBackup()">📥 Exportar Dados</button>
+        <button class="btn btn-gray btn-sm" onclick="document.getElementById('import-file').click()">📤 Importar Dados</button>
+        <input type="file" id="import-file" style="display:none" onchange="importBackup(this)">
+      </div>
+      <div id="settings-alert" class="alert" style="margin-top:10px"></div>
     </div>
   </div>`;
+}
+
+function saveGeneralSettings(){
+  const sett = {
+    companyName: document.getElementById('set-name').value,
+    companyCnpj: document.getElementById('set-cnpj').value,
+    companyPhone: document.getElementById('set-phone').value,
+    companyAddress: document.getElementById('set-addr').value,
+    deliveryFee: parseFloat(document.getElementById('set-delivery').value)||0,
+    serviceFee: parseFloat(document.getElementById('set-service').value)||0
+  };
+  S.set('pp_settings', sett);
+  showAlert('settings-alert', 'success', '✅ Configurações salvas com sucesso!');
+}
+
+function exportBackup(){
+  const data = {};
+  SYNC_KEYS.forEach(k => data[k] = S.get(k));
+  data['pp_settings'] = S.get('pp_settings');
+  const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `backup_pizzaria_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+}
+
+function importBackup(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(confirm('Isso irá substituir TODOS os dados atuais. Deseja continuar?')){
+        Object.entries(data).forEach(([k,v]) => S.set(k, v));
+        alert('✅ Dados importados! O sistema será reiniciado.');
+        location.reload();
+      }
+    } catch(err) { alert('❌ Arquivo inválido.'); }
+  };
+  reader.readAsText(file);
 }
 
 function saveFirebaseConfig(){
@@ -2015,8 +2059,13 @@ function printOrder(id){
     </tr>
   `).join('');
 
+  const sett = S.get('pp_settings', {});
   printEl.innerHTML = `
-    <h2>PIZZARIA PATRÍCIO</h2>
+    <h2 style="text-align:center">${sett.companyName || 'PIZZARIA PATRÍCIO'}</h2>
+    ${sett.companyCnpj ? `<p style="text-align:center; font-size:12px">CNPJ: ${sett.companyCnpj}</p>` : ''}
+    ${sett.companyPhone ? `<p style="text-align:center; font-size:12px">Tel: ${sett.companyPhone}</p>` : ''}
+    ${sett.companyAddress ? `<p style="text-align:center; font-size:12px">${sett.companyAddress}</p>` : ''}
+    <hr style="border:1px dashed #000; margin:10px 0">
     <p style="text-align:center">Pedido #${o.id} - ${tipoLabel}</p>
     <p>Data: ${o.createdAt}</p>
     <p>Cliente: ${o.client}</p>
@@ -2056,9 +2105,11 @@ function printFinanceiro(){
       byPayment[o.payment]+=o.total||0;
     }
   });
+  const sett = S.get('pp_settings', {});
   const printEl = document.getElementById('print-section');
   printEl.innerHTML = `
-    <h2 style="text-align:center">RELATÓRIO FINANCEIRO</h2>
+    <h2 style="text-align:center">${sett.companyName || 'PIZZARIA PATRÍCIO'}</h2>
+    <h3 style="text-align:center">RELATÓRIO FINANCEIRO</h3>
     <p style="text-align:center">Data: ${now()}</p>
     <hr style="border:1px dashed #000; margin:15px 0">
     <div style="font-size:14px">
