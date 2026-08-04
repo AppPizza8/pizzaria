@@ -1559,7 +1559,7 @@ function financeiro(el){
   const recent=[...orders].reverse().slice(0,30);
 
   el.innerHTML=`
-  <div class="page-header" style="margin-bottom:16px"><h2>💰 Financeiro</h2></div>
+  <div class="page-header" style="margin-bottom:16px"><h2>💰 Financeiro</h2><button class="btn btn-blue btn-sm" onclick="printFinanceiro()">🖨️ Imprimir Relatório</button></div>
   <div class="metric-grid" style="margin-bottom:20px">
     <div class="metric-card"><div class="metric-icon" style="background:rgba(31,111,235,.15)">💵</div>
       <div><div class="metric-val">${fmt(total)}</div><div class="metric-label">Faturamento Total</div></div></div>
@@ -2013,6 +2013,40 @@ function printOrder(id){
     </div>
   `;
   
+  window.print();
+}
+
+function printFinanceiro(){
+  const orders=S.get('pp_orders',[]).filter(o=>o.status==='done');
+  const total=orders.reduce((s,o)=>s+(o.total||0),0);
+  const byPayment={dinheiro:0,cartao:0,pix:0};
+  orders.forEach(o=>{
+    if(Array.isArray(o.payment)){
+      o.payment.forEach(p=>{ if(byPayment[p.type]!==undefined) byPayment[p.type]+=p.value; });
+    } else if(byPayment[o.payment]!==undefined) {
+      byPayment[o.payment]+=o.total||0;
+    }
+  });
+  const printEl = document.getElementById('print-section');
+  printEl.innerHTML = `
+    <h2 style="text-align:center">RELATÓRIO FINANCEIRO</h2>
+    <p style="text-align:center">Data: ${now()}</p>
+    <hr style="border:1px dashed #000; margin:15px 0">
+    <div style="font-size:14px">
+      <p><strong>Faturamento Total:</strong> ${fmt(total)}</p>
+      <p><strong>Custo Est. (45%):</strong> ${fmt(total*0.45)}</p>
+      <p><strong>Lucro Est.:</strong> ${fmt(total*0.55)}</p>
+    </div>
+    <hr style="border:1px dashed #000; margin:15px 0">
+    <div style="font-size:14px">
+      <p><strong>PAGAMENTOS:</strong></p>
+      <p>💵 Dinheiro: ${fmt(byPayment.dinheiro)}</p>
+      <p>💳 Cartão: ${fmt(byPayment.cartao)}</p>
+      <p>📱 Pix: ${fmt(byPayment.pix)}</p>
+    </div>
+    <hr style="border:1px dashed #000; margin:15px 0">
+    <p style="text-align:center; font-size:12px">Pizzaria Patrício</p>
+  `;
   window.print();
 }
 
