@@ -328,7 +328,7 @@ const S = {
 // FIREBASE SYNC — opcional. Ativa para multi-dispositivo
 // ============================================================
 let firebaseDb=null,useFirebase=false,lastSyncAt=0;
-const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements'];
+const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2'];
 
 function setupFirebase(config){
   try{
@@ -366,7 +366,9 @@ function onRemoteChange(key){
   const page=currentPage||'dashboard';
   const el=document.getElementById('content-area');
   if(key==='pp_orders'){
-    if(['orders','pdv','dashboard','kitchen','delivery','tables'].includes(page))navigate(page);
+    // Recarregar badges e página se houver mudança nos pedidos
+    buildSidebar();
+    if(['orders','pdv','dashboard','kitchen','delivery','tables'].includes(page)) navigate(page);
   }
   else if(key==='pp_products'&&page==='pdv')navigate('pdv');
   else if(key==='pp_borders'&&page==='pdv')navigate('pdv');
@@ -687,11 +689,12 @@ function dashboard(el){
 // PDV
 // ============================================================
 let cart=[];
-let selectedPayment='dinheiro';
 let orderType='delivery';
+let multiPayments = [];
 
 function pdv(el){
   cart=[];
+  multiPayments = [];
   const products=S.get('pp_products',[]).filter(p=>p.active);
   const cats=['Todos',...new Set(products.map(p=>p.category))];
 
@@ -733,17 +736,69 @@ function pdv(el){
         <div class="cart-total-row"><span style="color:var(--muted)">Subtotal</span><span id="cart-sub">R$ 0,00</span></div>
         <div class="cart-total-row big"><span>Total</span><span id="cart-total-val" style="color:var(--red)">R$ 0,00</span></div>
         <textarea class="cart-obs" id="cart-obs" rows="2" placeholder="Observações do pedido..."></textarea>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">FORMA DE PAGAMENTO</p>
-        <div class="payment-select">
-          <button class="pay-btn active" onclick="setPay('dinheiro',this)">💵 Dinheiro</button>
-          <button class="pay-btn" onclick="setPay('cartao',this)">💳 Cartão</button>
-          <button class="pay-btn" onclick="setPay('pix',this)">📱 Pix</button>
+        
+        <div id="pdv-payment-area">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">PAGAMENTO</p>
+          <div id="multi-pay-list" style="margin-bottom:10px"></div>
+          <div class="form-cols" style="grid-template-columns: 1fr 100px 40px; gap: 5px; margin-bottom:10px">
+            <select id="add-pay-type" style="padding:6px; font-size:12px">
+              <option value="dinheiro">💵 Dinheiro</option>
+              <option value="cartao">💳 Cartão</option>
+              <option value="pix">📱 Pix</option>
+            </select>
+            <input id="add-pay-val" type="number" step="0.01" placeholder="Valor" style="padding:6px; font-size:12px">
+            <button class="btn btn-green btn-xs" onclick="addPaymentRow()" style="justify-content:center">+</button>
+          </div>
+          <div id="pay-remain" style="font-size:12px; color:var(--orange); margin-bottom:10px; text-align:right">Restante: R$ 0,00</div>
         </div>
+
         <button class="btn btn-red" style="width:100%;justify-content:center;padding:12px" onclick="submitOrder()">✅ Confirmar Pedido</button>
       </div>
     </div>
   </div>`;
+  updateCartTotal();
+  if(orderType==='mesa') document.getElementById('pdv-payment-area').style.display='none';
 }
+
+function addPaymentRow(containerId = 'multi-pay-list', valId = 'add-pay-val', typeId = 'add-pay-type', remainId = 'pay-remain', targetList = multiPayments, totalToCover = null) {
+  const type = document.getElementById(typeId).value;
+  const val = parseFloat(document.getElementById(valId).value) || 0;
+  if(val <= 0) return;
+  
+  targetList.push({type, value: val});
+  document.getElementById(valId).value = '';
+  renderMultiPayments(containerId, remainId, targetList, totalToCover);
+}
+
+function renderMultiPayments(containerId, remainId, targetList, totalToCover) {
+  const total = cart.reduce((s,c)=>s+c.price,0);
+  const toCover = totalToCover !== null ? totalToCover : total;
+  const paid = targetList.reduce((s,p)=>s+p.value,0);
+  const remain = Math.max(0, toCover - paid);
+  
+  const icons = {dinheiro:'💵', cartao:'💳', pix:'📱'};
+  const el = document.getElementById(containerId);
+  el.innerHTML = targetList.map((p, i) => `
+    <div style="display:flex; justify-content:space-between; font-size:12px; background:var(--card2); padding:5px 8px; border-radius:6px; margin-bottom:4px; border:1px solid var(--border)">
+      <span>${icons[p.type]} ${p.type.toUpperCase()}</span>
+      <span><strong>${fmt(p.value)}</strong> <button onclick="removePaymentRow(${i}, '${containerId}', '${remainId}', ${JSON.stringify(targetList).replace(/"/g, '&quot;')}, ${toCover})" style="background:none; border:none; color:var(--red); cursor:pointer; margin-left:5px">✕</button></span>
+    </div>
+  `).join('');
+  
+  const remEl = document.getElementById(remainId);
+  if(remEl) remEl.textContent = `Restante: ${fmt(remain)}`;
+}
+
+// Versão global para o botão ✕ funcionar (hack simples para Vanilla JS)
+window.removePaymentRow = (i, containerId, remainId, listStr, toCover) => {
+  if(containerId === 'multi-pay-list') {
+    multiPayments.splice(i, 1);
+    renderMultiPayments(containerId, remainId, multiPayments, null);
+  } else {
+    checkoutPayments.splice(i, 1);
+    renderMultiPayments(containerId, remainId, checkoutPayments, toCover);
+  }
+};
 
 function productCard(p){
   const minPrice=p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0;
@@ -853,14 +908,17 @@ function setOrderType(type,btn){
   btn.classList.add('active');
   const addrRow=document.getElementById('cart-addr-row');
   const tableRow=document.getElementById('cart-table-row');
+  const payArea=document.getElementById('pdv-payment-area');
+  
   if(addrRow) addrRow.style.display=type==='delivery'?'block':'none';
+  if(payArea) payArea.style.display=type==='mesa'?'none':'block';
+  
   if(tableRow){
     tableRow.style.display=type==='mesa'?'block':'none';
     if(type==='mesa'){
       const tables=S.get('pp_tables',[]);
       const orders=S.get('pp_orders',[]);
-      // Show only free tables (no active order)
-      const freeTables=tables.filter(t=>!orders.find(o=>o.tableId===t.id&&['pending','making'].includes(o.status)));
+      const freeTables=tables.filter(t=>!orders.find(o=>o.tableId===t.id&&['pending','making','delivery','ready'].includes(o.status)));
       const sel=document.getElementById('cart-table');
       sel.innerHTML='<option value="">Selecione a mesa...</option>'+freeTables.map(t=>`<option value="${t.id}">Mesa ${t.id}</option>`).join('');
       if(!freeTables.length) sel.innerHTML='<option value="">⚠️ Todas as mesas ocupadas</option>';
@@ -882,20 +940,43 @@ function submitOrder(){
   if(cart.length===0){alert('Adicione pelo menos um item');return;}
   if(orderType==='delivery'&&!addr){alert('Informe o endereço de entrega');return;}
   if(orderType==='mesa'&&!tableId){alert('Selecione a mesa');return;}
-  const orders=S.get('pp_orders',[]);
+  
   const total=cart.reduce((s,c)=>s+c.price,0);
+  const paid = multiPayments.reduce((s,p)=>s+p.value,0);
+  
+  if(orderType !== 'mesa' && paid < total) {
+    if(!confirm(`O valor pago (${fmt(paid)}) é menor que o total (${fmt(total)}). Deseja continuar mesmo assim?`)) return;
+  }
+
+  const orders=S.get('pp_orders',[]);
   const obs=document.getElementById('cart-obs')?.value;
-  const newOrder={id:nextId(orders),client,address:addr,tableId:orderType==='mesa'?tableId:null,type:orderType,items:cart.map(c=>({...c})),total,payment:orderType==='mesa'?'Aberto':selectedPayment,obs,status:'pending',createdAt:now(),createdBy:currentUser.username};
+  const newOrder={
+    id:nextId(orders),
+    client,
+    address:addr,
+    tableId:orderType==='mesa'?tableId:null,
+    type:orderType,
+    items:cart.map(c=>({...c})),
+    total,
+    payment: orderType==='mesa' ? 'Aberto' : (multiPayments.length > 0 ? multiPayments : 'Pendente'),
+    obs,
+    status:'pending',
+    createdAt:now(),
+    createdBy:currentUser.username
+  };
+  
   orders.push(newOrder);
   S.set('pp_orders',orders);
-  // Marcar mesa como ocupada
+  
   if(orderType==='mesa'&&tableId){
     const tables=S.get('pp_tables',[]);
     const t=tables.find(x=>x.id===tableId);
     if(t){t.status='occupied';t.orderId=newOrder.id;t.openedAt=now();S.set('pp_tables',tables);}
   }
+  
   cart=[];
-  buildSidebar(); // update badge
+  multiPayments = [];
+  buildSidebar();
   alert(`✅ Pedido #${newOrder.id} criado com sucesso!${orderType==='mesa'?' (Mesa '+tableId+')':''}`);
   navigate('orders');
 }
@@ -929,23 +1010,26 @@ function renderOrdersRows(list){
   const typeLabel={delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'};
   const typeLabelFull=o=>{ if(o.type==='mesa'&&o.tableId) return `🪑 Mesa ${o.tableId}`; return typeLabel[o.type]||o.type||'-'; };
   const payLabel={dinheiro:'💵',cartao:'💳',pix:'📱',Aberto:'⏳'};
-  return [...list].reverse().map(o=>`<tr>
+  return [...list].reverse().map(o=>{
+    const payDisp = Array.isArray(o.payment) ? o.payment.map(p=>({dinheiro:'💵',cartao:'💳',pix:'📱'}[p.type]||'')).join('') : (payLabel[o.payment]||'');
+    return `<tr>
     <td><strong>#${o.id}</strong></td>
     <td>${o.client}</td>
     <td>${typeLabelFull(o)}</td>
     <td>${o.tableId?`<span class="badge badge-dine">Mesa ${o.tableId}</span>`:'-'}</td>
     <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items?.map(i=>`${i.qty}x ${i.name}`).join(', ')||'-'}</td>
     <td><strong>${fmt(o.total)}</strong></td>
-    <td>${payLabel[o.payment]||''} ${o.payment||'-'}</td>
+    <td>${payDisp} ${!Array.isArray(o.payment)?(o.payment||'-'):''}</td>
     <td>${statusBadge(o.status)}</td>
     <td style="font-size:12px;color:var(--muted)">${o.createdAt}</td>
     <td class="row-actions">
-      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue btn-xs" onclick="advanceOrder(${o.id})">${o.status==='ready'?'Concluir ✓':'Avançar →'}</button>`:''}
+      ${o.status!=='done'&&o.status!=='cancelled'?(o.status==='ready'||o.status==='delivery'?`<button class="btn btn-green btn-xs" onclick="checkoutOrder(${o.id})">💰 Concluir</button>`:`<button class="btn btn-blue btn-xs" onclick="advanceOrder(${o.id})">Avançar →</button>`):''}
       ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="addItemToOrder(${o.id})">➕</button>`:''}
       <button class="btn btn-gray btn-xs" onclick="viewOrder(${o.id})">👁</button>
       ${currentUser.role==='admin'||currentUser.role==='gerente'?`<button class="btn btn-xs" style="background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)" onclick="cancelOrder(${o.id})">✕</button>`:''}
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function filterOrders(status,btn){
@@ -1064,7 +1148,7 @@ function kitchenCard(o,status){
       ${status==='pending'?`<button class="btn btn-blue btn-sm" style="flex:1;justify-content:center" onclick="advanceOrder(${o.id})">🔥 Iniciar</button>`:''}
       ${status==='making'?`<button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="advanceOrder(${o.id})">✅ Pronto</button>`:''}
       ${status==='delivery'?`<span style="color:var(--green);font-size:12px;font-weight:600">Aguardando entregador</span>`:''}
-      ${status==='ready'?`<span style="color:var(--green);font-size:12px;font-weight:600">Pronto para ${o.type==='mesa'?'servir':'retirada'}</span>`:''}
+      ${status==='ready'?`<button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="checkoutOrder(${o.id})">💰 Concluir ${o.type==='mesa'?'Mesa':'Retirada'}</button>`:''}
       ${status!=='done'&&status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:6px;justify-content:center;width:100%" onclick="addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
     </div>
   </div>`;
@@ -1091,7 +1175,7 @@ function delivery(el){
         </div>
         <div style="text-align:right">
           ${statusBadge(o.status)}<br><br>
-          ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="advanceOrder(${o.id})">Entregue ✓</button><br>`:''}
+          ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="checkoutOrder(${o.id})">💰 Concluir Entrega</button><br>`:''}
           ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:4px" onclick="addItemToOrder(${o.id})">➕ Itens</button>`:''}
         </div>
       </div>`).join('')}
@@ -1132,7 +1216,7 @@ function clickMesa(id){
       <div style="display:flex;gap:10px">
         <button class="btn btn-gray" style="flex:1;justify-content:center" onclick="closeModal();viewOrder(${active.id})">👁 Ver Pedido</button>
         <button class="btn btn-blue" style="flex:1;justify-content:center" onclick="closeModal();addItemToOrder(${active.id})">➕ Itens</button>
-        <button class="btn btn-green" style="flex:1;justify-content:center;background:var(--green)" onclick="closeModal();checkoutTableOrder(${active.id})">💰 Fechar</button>
+        <button class="btn btn-green" style="flex:1;justify-content:center;background:var(--green)" onclick="closeModal();checkoutOrder(${active.id})">💰 Fechar</button>
       </div>
       <div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Voltar</button></div>
     </div>`);
@@ -1462,7 +1546,13 @@ function financeiro(el){
   const orders=S.get('pp_orders',[]).filter(o=>o.status==='done');
   const total=orders.reduce((s,o)=>s+(o.total||0),0);
   const byPayment={dinheiro:0,cartao:0,pix:0};
-  orders.forEach(o=>{ if(byPayment[o.payment]!==undefined) byPayment[o.payment]+=o.total||0; });
+  orders.forEach(o=>{
+    if(Array.isArray(o.payment)){
+      o.payment.forEach(p=>{ if(byPayment[p.type]!==undefined) byPayment[p.type]+=p.value; });
+    } else if(byPayment[o.payment]!==undefined) {
+      byPayment[o.payment]+=o.total||0;
+    }
+  });
   const cost=total*0.45;const profit=total-cost;
 
   // Last 30 orders
@@ -1496,7 +1586,10 @@ function financeiro(el){
   <div class="table-box">
     <table><thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Pagamento</th><th>Data</th></tr></thead>
     <tbody>
-      ${recent.map(o=>`<tr><td>#${o.id}</td><td>${o.client}</td><td><strong>${fmt(o.total)}</strong></td><td>${{dinheiro:'💵 Dinheiro',cartao:'💳 Cartão',pix:'📱 Pix'}[o.payment]||o.payment}</td><td style="font-size:12px;color:var(--muted)">${o.createdAt}</td></tr>`).join('') ||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma venda registrada</td></tr>'}
+      ${recent.map(o=>{
+        const payDisp = Array.isArray(o.payment) ? o.payment.map(p=>`${{dinheiro:'💵',cartao:'💳',pix:'📱'}[p.type]||''}${fmt(p.value)}`).join(' ') : ({dinheiro:'💵 Dinheiro',cartao:'💳 Cartão',pix:'📱 Pix'}[o.payment]||o.payment);
+        return `<tr><td>#${o.id}</td><td>${o.client}</td><td><strong>${fmt(o.total)}</strong></td><td><span style="font-size:11px">${payDisp}</span></td><td style="font-size:12px;color:var(--muted)">${o.createdAt}</td></tr>`
+      }).join('') ||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma venda registrada</td></tr>'}
     </tbody></table>
   </div>`;
 
@@ -1818,22 +1911,33 @@ function confirmAddItems(){
 
 // ============================================================
 // CHECKOUT MESA
-function checkoutTableOrder(id){
+let checkoutPayments = [];
+function checkoutOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
+  checkoutPayments = Array.isArray(o.payment) ? [...o.payment] : [];
+  const title = o.type === 'mesa' ? `Fechar Comanda — Mesa ${o.tableId}` : `Concluir Pedido #${o.id}`;
   openModal(`<div class="modal">
-    <h3>💰 Fechar Comanda — Mesa ${o.tableId}</h3>
+    <h3>💰 ${title}</h3>
     <p style="margin-bottom:12px">Cliente: <strong>${o.client}</strong></p>
     <div style="background:var(--card2);padding:16px;border-radius:10px;margin-bottom:20px;text-align:center">
       <div style="font-size:14px;color:var(--muted)">Total a Pagar</div>
       <div style="font-size:32px;font-weight:800;color:var(--red)">${fmt(o.total)}</div>
     </div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">SELECIONE A FORMA DE PAGAMENTO</p>
-    <div class="payment-select" id="checkout-pay-select">
-      <button class="pay-btn active" onclick="setCheckoutPay('dinheiro',this)">💵 Dinheiro</button>
-      <button class="pay-btn" onclick="setCheckoutPay('cartao',this)">💳 Cartão</button>
-      <button class="pay-btn" onclick="setCheckoutPay('pix',this)">📱 Pix</button>
+    
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">PAGAMENTO</p>
+    <div id="checkout-pay-list" style="margin-bottom:10px"></div>
+    <div class="form-cols" style="grid-template-columns: 1fr 100px 40px; gap: 5px; margin-bottom:10px">
+      <select id="chk-pay-type" style="padding:6px; font-size:12px">
+        <option value="dinheiro">💵 Dinheiro</option>
+        <option value="cartao">💳 Cartão</option>
+        <option value="pix">📱 Pix</option>
+      </select>
+      <input id="chk-pay-val" type="number" step="0.01" placeholder="Valor" style="padding:6px; font-size:12px">
+      <button class="btn btn-green btn-xs" onclick="addPaymentRow('checkout-pay-list', 'chk-pay-val', 'chk-pay-type', 'chk-pay-remain', checkoutPayments, ${o.total})" style="justify-content:center">+</button>
     </div>
+    <div id="chk-pay-remain" style="font-size:12px; color:var(--orange); margin-bottom:10px; text-align:right">Restante: ${fmt(o.total)}</div>
+
     <div class="modal-footer">
       <button class="btn btn-blue" onclick="printOrder(${id})">🖨️ Imprimir Comanda</button>
       <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
@@ -1842,27 +1946,29 @@ function checkoutTableOrder(id){
   </div>`);
 }
 
-let selectedCheckoutPay = 'dinheiro';
-function setCheckoutPay(type, btn){
-  selectedCheckoutPay = type;
-  btn.parentElement.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
 function finishTableOrder(id){
   const orders = S.get('pp_orders',[]);
   const o = orders.find(x=>x.id===id);
   if(!o) return;
   
-  o.payment = selectedCheckoutPay;
+  const paid = checkoutPayments.reduce((s,p)=>s+p.value,0);
+  if(paid < o.total) {
+    if(!confirm(`O valor pago (${fmt(paid)}) é menor que o total (${fmt(o.total)}). Confirmar mesmo assim?`)) return;
+  }
+  
+  o.payment = checkoutPayments.length > 0 ? checkoutPayments : 'Pendente';
   o.status = 'done';
-  freeTableFromOrder(o);
+  
+  // Se for mesa, libera ela
+  if(o.type === 'mesa') {
+    freeTableFromOrder(o);
+  }
   
   S.set('pp_orders', orders);
   closeModal();
   buildSidebar();
-  alert('✅ Comanda fechada e mesa liberada!');
-  navigate('tables');
+  alert('✅ Pedido concluído com sucesso!');
+  navigate(currentPage);
 }
 
 function printOrder(id){
@@ -1900,7 +2006,7 @@ function printOrder(id){
       </tbody>
     </table>
     <div class="total-row">TOTAL: ${fmt(o.total)}</div>
-    <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : o.payment.toUpperCase()}</p>
+    <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : (Array.isArray(o.payment) ? o.payment.map(p => `${p.type.toUpperCase()}: ${fmt(p.value)}`).join(' | ') : o.payment.toUpperCase())}</p>
     <div class="footer">
       <p>Obrigado pela preferência!</p>
       <p>Sistema Pizzaria Patrício</p>
