@@ -463,10 +463,9 @@ function initData(){
   const currentProducts = S.get('pp_products', []);
   const isOldMenu = currentProducts.length === 0 || currentProducts.some(p => p.name === 'Margherita' && p.sizes && p.sizes[0].price === 26);
   
-  if (isOldMenu || !S.get('pp_products_v3')) {
-    S.set('pp_products', newProducts);
-    S.set('pp_products_v3', '1'); // Marca que já atualizou para o novo menu
-  }
+  // Forçar atualização absoluta para o novo cardápio
+  S.set('pp_products', newProducts);
+  S.set('pp_products_v3', 'final_version');
 }
 
 // ============================================================
