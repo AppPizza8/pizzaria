@@ -34,13 +34,9 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .app-header .hamburger:hover{background:var(--card2);color:var(--text)}
 .app-header h2{font-size:18px;font-weight:600;flex:1}
 .app-header .hactions{display:flex;align-items:center;gap:10px}
-.app-header .hactions .icon-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:6px;border-radius:8px;transition:.2s;position:relative}
-.app-header .hactions .icon-btn:hover{background:var(--card2);color:var(--text)}
-.notif-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--red);border-radius:50%}
-.user-chip{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:13px}
-.user-chip .badge{background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
 .btn-logout{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:.2s}
 .btn-logout:hover{border-color:var(--red);color:var(--red)}
+.user-chip{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:13px}
 
 .app-body{display:flex;flex:1;overflow:hidden}
 
@@ -54,703 +50,322 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .sidebar-logo .logo-text span{color:var(--muted);font-size:11px}
 .nav-section{padding:0 12px;margin-bottom:4px}
 .nav-section-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;padding:8px 8px 4px;overflow:hidden;white-space:nowrap}
-#sidebar.collapsed .nav-section-label{opacity:0}
 .nav-btn{width:100%;background:none;border:none;color:var(--muted);text-align:left;padding:9px 10px;cursor:pointer;font-size:13px;border-radius:8px;display:flex;align-items:center;gap:10px;transition:.15s;white-space:nowrap;overflow:hidden;position:relative}
 .nav-btn:hover{background:var(--card2);color:var(--text)}
 .nav-btn.active{background:rgba(230,57,70,.15);color:var(--red);font-weight:600}
-.nav-btn .nav-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
-.nav-btn .nav-label{overflow:hidden}
-#sidebar.collapsed .nav-label{display:none}
-.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;flex-shrink:0}
-#sidebar.collapsed .nav-badge{display:none}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px}
 
 /* ===== MAIN ===== */
 #main-content{flex:1;overflow-y:auto;padding:24px;background:var(--bg)}
-.page{display:none}
-.page.active{display:block}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
 .page-header h2{font-size:22px;font-weight:700}
-.page-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
 
-/* ===== CARDS ===== */
+/* ===== CARDS & METRICS ===== */
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
 .metric-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:16px;transition:.2s}
-.metric-card:hover{border-color:#444;transform:translateY(-1px)}
 .metric-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.metric-card .metric-val{font-size:24px;font-weight:700;line-height:1.1}
-.metric-card .metric-label{font-size:12px;color:var(--muted);margin-top:2px}
-.metric-card .metric-sub{font-size:11px;margin-top:3px}
+.metric-val{font-size:24px;font-weight:700;line-height:1.1}
+.metric-label{font-size:12px;color:var(--muted);margin-top:2px}
 
-/* ===== CHARTS ===== */
-.chart-row{display:grid;grid-template-columns:1fr 380px;gap:16px;margin-bottom:20px}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
 .chart-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
 .chart-box h3{font-size:15px;margin-bottom:16px}
-.ranking-list{display:flex;flex-direction:column;gap:10px}
-.rank-item{display:flex;align-items:center;gap:10px}
-.rank-num{width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.rank-num.gold{background:#f0c000;color:#000}
-.rank-num.silver{background:#8b949e}
-.rank-num.bronze{background:#fb8500}
-.rank-bar-wrap{flex:1}
-.rank-name{font-size:13px;margin-bottom:3px}
-.rank-bar{height:6px;background:var(--red);border-radius:3px;opacity:.8}
-.rank-count{font-size:12px;color:var(--muted);flex-shrink:0}
 
 /* ===== TABLES ===== */
 .table-box{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 table{width:100%;border-collapse:collapse}
-th{background:var(--card2);padding:11px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+th{background:var(--card2);padding:11px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase}
 td{padding:12px 16px;font-size:14px;border-bottom:1px solid var(--border)}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:rgba(255,255,255,.02)}
 
 /* ===== BUTTONS ===== */
 .btn{padding:9px 18px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px}
 .btn-red{background:var(--red);color:#fff}
-.btn-red:hover{background:var(--red2)}
 .btn-green{background:var(--green);color:#fff}
 .btn-blue{background:var(--blue);color:#fff}
 .btn-gray{background:var(--card2);color:var(--text);border:1px solid var(--border)}
-.btn-gray:hover{background:#2d333b}
-.btn-sm{padding:5px 10px;font-size:12px}
 .btn-xs{padding:3px 8px;font-size:11px}
-
-/* ===== FORMS ===== */
-.form-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
-.form-row{margin-bottom:16px}
-.form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.form-row input,.form-row select,.form-row textarea{width:100%;padding:10px 12px;background:#0d1117;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;transition:.2s}
-.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--red)}
-.form-row select option{background:var(--card)}
-.form-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.form-cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-
-/* ===== STATUS ===== */
-.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;gap:4px}
-.badge-pending{background:rgba(240,192,0,.15);color:var(--yellow);border:1px solid rgba(240,192,0,.3)}
-.badge-making{background:rgba(31,111,235,.15);color:#58a6ff;border:1px solid rgba(31,111,235,.3)}
-.badge-delivery{background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
-.badge-ready{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
-.badge-done{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
-.badge-cancelled{background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)}
-.badge-active{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
-.badge-inactive{background:rgba(139,148,158,.15);color:var(--muted);border:1px solid rgba(139,148,158,.2)}
-.badge-dine{background:rgba(251,133,0,.15);color:var(--orange);border:1px solid rgba(251,133,0,.3)}
-
-/* ===== MODAL ===== */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto}
-.modal h3{font-size:17px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
-.modal-lg{width:700px}
+.btn-sm{padding:5px 10px;font-size:12px}
 
 /* ===== PDV ===== */
 .pdv-layout{display:grid;grid-template-columns:1fr 360px;gap:16px;min-height:calc(100vh - 160px)}
 .pdv-products{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
 .pdv-cart{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column}
 .product-search{width:100%;padding:10px 14px;background:#0d1117;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;margin-bottom:14px}
-.product-search:focus{border-color:var(--red)}
 .cat-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.cat-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
-.cat-tab.active,.cat-tab:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.cat-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:12px;transition:.15s}
+.cat-tab.active{background:var(--red);color:#fff;border-color:var(--red)}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.product-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 12px;cursor:pointer;transition:.15s;text-align:center}
-.product-card:hover{border-color:var(--red);transform:translateY(-2px)}
-.product-card .pc-icon{font-size:28px;margin-bottom:6px}
-.product-card .pc-name{font-size:13px;font-weight:600;margin-bottom:4px}
-.product-card .pc-price{font-size:12px;color:var(--red)}
-.product-card .pc-sizes{font-size:10px;color:var(--muted);margin-top:2px}
+.product-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 12px;cursor:pointer;text-align:center}
+.pc-name{font-size:13px;font-weight:600;margin:6px 0 4px}
+.pc-price{font-size:12px;color:var(--red)}
 
 .cart-items{flex:1;overflow-y:auto;margin-bottom:14px}
-.cart-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
-.cart-item:last-child{border-bottom:none}
-.cart-item-info{flex:1;min-width:0}
-.cart-item-name{font-size:13px;font-weight:600}
-.cart-item-sub{font-size:11px;color:var(--muted);margin-top:1px}
-.cart-item-price{font-size:13px;font-weight:700;color:var(--red);flex-shrink:0}
-.cart-item-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;transition:.15s}
-.cart-item-remove:hover{color:var(--red);background:rgba(230,57,70,.1)}
-.cart-total-box{border-top:1px solid var(--border);padding-top:14px}
-.cart-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:14px}
-.cart-total-row.big{font-size:18px;font-weight:700;color:var(--text)}
-.cart-obs{width:100%;padding:8px 10px;background:#0d1117;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;resize:none;margin-bottom:12px}
-.payment-select{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
-.pay-btn{padding:8px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s;font-weight:600}
-.pay-btn.active,.pay-btn:hover{border-color:var(--green);color:var(--green);background:rgba(46,160,67,.1)}
+.cart-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.cart-total-row.big{font-size:18px;font-weight:700;display:flex;justify-content:space-between;margin-bottom:10px}
 
-/* ===== KITCHEN ===== */
-.kitchen-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-.kitchen-col-title{font-size:13px;font-weight:700;margin-bottom:10px;padding:8px 12px;border-radius:8px;text-align:center}
-.kc-pending{background:rgba(240,192,0,.1);color:var(--yellow)}
-.kc-making{background:rgba(31,111,235,.1);color:#58a6ff}
-.kc-ready{background:rgba(46,160,67,.1);color:#3fb950}
-.kitchen-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
-.kitchen-card.urgent{border-color:var(--red);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,.3)}50%{box-shadow:0 0 0 6px rgba(230,57,70,0)}}
-.kitchen-card h4{font-size:14px;font-weight:700;margin-bottom:6px;display:justify;justify-content:space-between}
-.kitchen-card .kc-items{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px}
-.kitchen-card .kc-time{font-size:11px;color:var(--muted);margin-bottom:8px}
+/* ===== MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:999}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:480px;max-width:95%}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 
-/* ===== SIZES CONFIG ===== */
-.size-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:#0d1117;border-radius:8px;border:1px solid var(--border)}
-.size-row input{flex:1;padding:6px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
-.size-row input:focus{border-color:var(--red)}
-.size-row .remove-size{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;transition:.15s}
-.size-row .remove-size:hover{color:var(--red)}
+/* ===== TABLES GRID ===== */
+.mesas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
+.mesa-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer}
+.mesa-card.occupied{border-color:var(--orange);background:rgba(251,133,0,.05)}
+.mesa-card.free{border-color:var(--green);background:rgba(46,160,67,.05)}
+.mesa-num{font-size:18px;font-weight:800}
 
-/* ===== DELIVERY CARDS ===== */
-.delivery-cards{display:flex;flex-direction:column;gap:10px}
-
-/* ===== PRINT STYLES ===== */
+/* ===== PRINT ===== */
 @media print {
   body * { visibility: hidden; }
   #print-section, #print-section * { visibility: visible; }
-  #print-section { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; padding: 10px; font-family: 'Courier New', Courier, monospace; display: block !important; }
-  .no-print { display: none !important; }
+  #print-section { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; padding: 20px; display: block !important; }
 }
-#print-section { display: none; }
-#print-section h2 { text-align: center; font-size: 18px; margin-bottom: 5px; }
-#print-section p { font-size: 12px; margin: 2px 0; }
-#print-section table { width: 100%; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 10px 0; border-collapse: collapse; }
-#print-section th { font-size: 11px; text-align: left; background: none; color: #000; padding: 5px 0; border-bottom: 1px dashed #000; }
-#print-section td { font-size: 11px; padding: 3px 0; border: none; color: #000; }
-#print-section .total-row { font-size: 14px; font-weight: bold; text-align: right; margin-top: 10px; }
-#print-section .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px dashed #000; padding-top: 10px; }
+#print-section { display: none; color: #000; }
 
-.delivery-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px}
-.delivery-card.delivered{opacity:.6}
-.delivery-card .dc-num{font-size:20px;font-weight:800;color:var(--red);min-width:36px}
-.delivery-card .dc-info{flex:1}
-.mesas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
-.mesa-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:.2s}
-.mesa-card:hover{border-color:var(--red);transform:translateY(-2px)}
-.mesa-card.occupied{border-color:var(--orange);background:rgba(251,133,0,.05)}
-.mesa-card.free{border-color:var(--green);background:rgba(46,160,67,.05)}
-.mesa-num{font-size:18px;font-weight:800;margin-bottom:4px}
-.mesa-status{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
+.badge-pending{background:rgba(240,192,0,.15);color:var(--yellow)}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">🍕</div>
     <h1>Pizzaria Patrício</h1>
-    <p>Sistema de Gestão Interna</p>
     <input id="login-user" placeholder="Usuário" value="admin">
     <input id="login-pass" type="password" placeholder="Senha" value="pizza123">
-    <button onclick="doLogin()">Entrar no Sistema</button>
-    <div id="login-error" class="login-error">Usuário ou senha incorretos</div>
+    <button onclick="doLogin()">Entrar</button>
+    <div id="login-error" class="login-error">Erro no login</div>
   </div>
 </div>
 
-<!-- APP -->
 <div id="app">
   <header class="app-header">
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
     <h2 id="page-title">Dashboard</h2>
     <div class="hactions">
-      <div id="sync-status"></div>
-      <div class="user-chip">
-        <span id="header-name">Usuário</span>
-        <span id="header-role" class="badge badge-pending">Cargo</span>
-      </div>
+      <div class="user-chip"><span id="header-name">Admin</span></div>
       <button class="btn-logout" onclick="doLogout()">Sair</button>
     </div>
   </header>
   <div class="app-body">
-    <nav id="sidebar">
-      <div class="sidebar-logo">
-        <div class="logo-icon">🍕</div>
-        <div class="logo-text"><strong>Pizzaria Patrício</strong><span>Sistema v2.0</span></div>
-      </div>
-      <div id="nav-items"></div>
-    </nav>
-   	<div id="main-content"></div>
+    <nav id="sidebar"><div id="nav-items"></div></nav>
+    <main id="main-content"></main>
   </div>
 </div>
 <div id="print-section"></div>
 
 <script>
-// ============================================================
-// STORAGE
-// ============================================================
+// --- STORAGE ---
 const S = {
-  get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},
-  set:(k,v)=>{
-    localStorage.setItem(k,JSON.stringify(v));
-    if(typeof firebaseDb!=='undefined'&&firebaseDb&&useFirebase){
-      try{firebaseDb.ref('pizzaria/'+k).set(v);}catch(e){console.warn('Sync error',e);}
-    }
-  }
+  get:(k,d)=>JSON.parse(localStorage.getItem(k))??d,
+  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
 };
 
-let firebaseDb=null,useFirebase=false,lastSyncAt=0;
-const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_v2'];
-
-function setupFirebase(config){
-  try{
-    firebase.initializeApp(config);
-    firebaseDb=firebase.database();
-    useFirebase=true;
-    SYNC_KEYS.forEach(k=>{
-      firebaseDb.ref('pizzaria/'+k).on('value',snap=>{
-        const v=snap.val();
-        if(v!==null&&v!==undefined){
-          localStorage.setItem(k,JSON.stringify(v));
-          lastSyncAt=Date.now();
-          updateSyncUI('ok');
-          onRemoteChange(k);
-        }
-      });
-    });
-    return true;
-  }catch(e){return false;}
-}
-
-function onRemoteChange(key){
-  const page=currentPage||'dashboard';
-  if(key==='pp_orders'){
-    buildSidebar();
-    if(['orders','pdv','dashboard','kitchen','delivery','tables'].includes(page)) navigate(page);
-  }
-  else if(['pp_products','pp_borders','pp_tables','pp_clients'].includes(key)) navigate(page);
-}
-
-function updateSyncUI(state){
-  const el=document.getElementById('sync-status');
-  if(!el)return;
-  if(!useFirebase){el.innerHTML='<span style="color:var(--muted);font-size:11px">📴 Local</span>';return;}
-  el.innerHTML=state==='ok'?'<span style="color:#2ea043;font-size:11px">🟢 Sincronizado</span>':'<span style="color:#fb8500;font-size:11px">🟡 Reconectando...</span>';
-}
-
 function initData(){
-  const defaultUsers=[
-    {id:1,username:'admin',password:'pizza123',name:'Administrador',role:'admin',active:true},
-    {id:2,username:'gerente',password:'pizza123',name:'Gerente',role:'gerente',active:true},
-    {id:3,username:'caixa',password:'pizza123',name:'Caixa',role:'caixa',active:true},
-    {id:4,username:'cozinha',password:'pizza123',name:'Cozinha',role:'cozinha',active:true},
-    {id:5,username:'entregador',password:'pizza123',name:'Entregador',role:'entregador',active:true},
-  ];
-  if(!S.get('pp_users',null)) S.set('pp_users',defaultUsers);
-  if(!S.get('pp_orders',null)) S.set('pp_orders',[]);
-  if(!S.get('pp_tables',null)) S.set('pp_tables', Array.from({length:12},(_,i)=>({id:i+1,status:'free',orderId:null})));
-  if(!S.get('pp_clients',null)) S.set('pp_clients',[]);
-  if(!S.get('pp_borders',null)) S.set('pp_borders',[{id:1,name:'Sem Borda',price:0},{id:2,name:'Catupiry',price:5},{id:3,name:'Cheddar',price:5}]);
-  if(!S.get('pp_products',null)) S.set('pp_products',[{id:1,name:'Calabresa',category:'Pizza',active:true,sizes:[{name:'Grande',price:48}]}]);
+  if(!S.get('pp_users')) S.set('pp_users', [{id:1,username:'admin',password:'pizza123',name:'Admin',role:'admin',active:true}]);
+  if(!S.get('pp_orders')) S.set('pp_orders', []);
+  if(!S.get('pp_tables')) S.set('pp_tables', Array.from({length:12},(_,i)=>({id:i+1})));
+  if(!S.get('pp_products')) S.set('pp_products', [{id:1,name:'Calabresa',category:'Pizza',active:true,price:48},{id:2,name:'Coca 2L',category:'Bebida',active:true,price:12}]);
 }
 
-// ============================================================
-// AUTH & NAVIGATION
-// ============================================================
+// --- AUTH ---
 let currentUser = null;
 function doLogin(){
-  const u=document.getElementById('login-user').value.trim();
+  const u=document.getElementById('login-user').value;
   const p=document.getElementById('login-pass').value;
-  const user=S.get('pp_users',[]).find(x=>x.username===u&&x.password===p&&x.active);
-  if(!user){document.getElementById('login-error').style.display='block';return;}
+  const user=S.get('pp_users',[]).find(x=>x.username===u && x.password===p);
+  if(!user) return alert('Erro');
   currentUser=user;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('header-name').textContent=user.name;
-  document.getElementById('header-role').textContent=roleLabel(user.role);
-  buildSidebar();
-  navigate(defaultPage(user.role));
+  buildSidebar(); navigate('dashboard');
 }
-function doLogout(){ currentUser=null; location.reload(); }
-const ROLE_LABEL={admin:'Admin',gerente:'Gerente',caixa:'Caixa',entregador:'Entregador',cozinha:'Cozinha'};
-function roleLabel(r){return ROLE_LABEL[r]||r;}
-function defaultPage(r){return{admin:'dashboard',gerente:'dashboard',caixa:'pdv',entregador:'delivery',cozinha:'kitchen'}[r]||'dashboard';}
+function doLogout(){ location.reload(); }
 
-const ALL_PAGES = {
-  dashboard: {icon:'📊',label:'Dashboard',section:'PRINCIPAL'},
-  pdv:       {icon:'🖥️',label:'PDV',section:'PRINCIPAL'},
-  orders:    {icon:'🧾',label:'Pedidos',section:'PRINCIPAL',badge:'orders'},
-  tables:    {icon:'🪑',label:'Mesas',section:'PRINCIPAL'},
-  delivery:  {icon:'🛵',label:'Delivery',section:'PRINCIPAL'},
-  kitchen:   {icon:'👨‍🍳',label:'Cozinha',section:'PRINCIPAL'},
-  products:  {icon:'🍕',label:'Produtos',section:'GESTÃO'},
-  borders:   {icon:'🔲',label:'Bordas',section:'GESTÃO'},
-  clients:   {icon:'👤',label:'Clientes',section:'GESTÃO'},
-  users:     {icon:'👥',label:'Usuários',section:'GESTÃO'},
-  financeiro:{icon:'💰',label:'Financeiro',section:'FINANCEIRO'},
-  settings:  {icon:'⚙️',label:'Configurações',section:'SISTEMA'},
-  account:   {icon:'🔑',label:'Minha Conta',section:'SISTEMA'},
+// --- NAV ---
+let currentPage = '';
+const PAGES = {
+  dashboard: {icon:'📊',label:'Dashboard'},
+  pdv: {icon:'🖥️',label:'PDV'},
+  orders: {icon:'🧾',label:'Pedidos'},
+  tables: {icon:'🪑',label:'Mesas'},
+  financeiro: {icon:'💰',label:'Financeiro'}
 };
-const ROLE_PAGES = {
-  admin: ['dashboard','pdv','orders','tables','delivery','kitchen','products','borders','clients','users','financeiro','settings','account'],
-  gerente: ['dashboard','pdv','orders','tables','delivery','kitchen','products','clients','financeiro','account'],
-  caixa: ['pdv','orders','tables','account'],
-  entregador: ['delivery','account'],
-  cozinha: ['kitchen','account'],
-};
+function buildSidebar(){
+  let h='';
+  Object.entries(PAGES).forEach(([id,p])=>{
+    h+=`<button class="nav-btn" onclick="navigate('${id}')"><span>${p.icon}</span> ${p.label}</button>`;
+  });
+  document.getElementById('nav-items').innerHTML=h;
+}
+function navigate(p){
+  currentPage=id=p;
+  document.getElementById('page-title').textContent=PAGES[p].label;
+  const el=document.getElementById('main-content');
+  window[p](el);
+}
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('collapsed'); }
 
-// ============================================================
-// PDV & PAYMENTS
-// ============================================================
+// --- HELPERS ---
+const fmt = v => 'R$ ' + Number(v||0).toFixed(2);
+const now = () => new Date().toLocaleString('pt-BR');
+function openModal(h){
+  const d=document.createElement('div'); d.className='modal-overlay'; d.innerHTML=h;
+  d.onclick=e=>{if(e.target===d) closeModal();};
+  document.body.appendChild(d);
+}
+function closeModal(){ document.querySelectorAll('.modal-overlay').forEach(m=>m.remove()); }
+
+// --- PAGES ---
+function dashboard(el){
+  const os=S.get('pp_orders',[]).filter(o=>o.status==='done');
+  const total=os.reduce((s,o)=>s+o.total,0);
+  el.innerHTML=`<div class="metric-grid">
+    <div class="metric-card"><div class="metric-val">${fmt(total)}</div><div class="metric-label">Vendas Hoje</div></div>
+    <div class="metric-card"><div class="metric-val">${os.length}</div><div class="metric-label">Pedidos Finalizados</div></div>
+  </div>`;
+}
+
 let cart=[];
 let orderType='delivery';
-let multiPayments = [];
+let multiPayments=[];
 
 function pdv(el){
   cart=[]; multiPayments=[];
-  const products=S.get('pp_products',[]).filter(p=>p.active);
-  const cats=['Todos',...new Set(products.map(p=>p.category))];
-  el.innerHTML=`
-  <div class="pdv-layout">
+  const prods=S.get('pp_products',[]);
+  el.innerHTML=`<div class="pdv-layout">
     <div class="pdv-products">
-      <input class="product-search" placeholder="🔍 Buscar..." oninput="filterProducts(this.value)">
-      <div class="cat-tabs">${cats.map(c=>`<button class="cat-tab ${c==='Todos'?'active':''}" onclick="filterCat('${c}',this)">${c}</button>`).join('')}</div>
-      <div class="product-grid" id="product-grid">${products.map(p=>productCard(p)).join('')}</div>
+      <div class="product-grid">${prods.map(p=>`<div class="product-card" onclick="addToCart(${p.id})"><strong>${p.name}</strong><br>${fmt(p.price)}</div>`).join('')}</div>
     </div>
     <div class="pdv-cart">
       <div style="display:flex;gap:4px;margin-bottom:10px">
-        <button class="pay-btn ${orderType==='delivery'?'active':''}" onclick="setOrderType('delivery',this)" style="flex:1">🛵 Delivery</button>
-        <button class="pay-btn ${orderType==='mesa'?'active':''}" onclick="setOrderType('mesa',this)" style="flex:1">🪑 Mesa</button>
-        <button class="pay-btn ${orderType==='retirada'?'active':''}" onclick="setOrderType('retirada',this)" style="flex:1">🏠 Retirada</button>
+        <button class="btn ${orderType==='delivery'?'btn-red':'btn-gray'}" onclick="orderType='delivery';navigate('pdv')">Delivery</button>
+        <button class="btn ${orderType==='mesa'?'btn-red':'btn-gray'}" onclick="orderType='mesa';navigate('pdv')">Mesa</button>
       </div>
-      <input id="cart-client" class="product-search" placeholder="Nome do cliente" style="margin-bottom:8px">
-      <input id="cart-addr" class="product-search" placeholder="Endereço" style="margin-bottom:8px; display:${orderType==='delivery'?'block':'none'}">
-      <select id="cart-table" class="product-search" style="margin-bottom:8px; display:${orderType==='mesa'?'block':'none'}"></select>
-      <div class="cart-items" id="cart-items"></div>
-      <div class="cart-total-box">
-        <div class="cart-total-row big"><span>Total</span><span id="cart-total-val" style="color:var(--red)">R$ 0,00</span></div>
-        <div id="pdv-payment-area" style="display:${orderType==='mesa'?'none':'block'}">
-          <div id="multi-pay-list"></div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr 40px; gap:4px; margin:8px 0">
-            <select id="add-pay-type"><option value="dinheiro">💵 Dinheiro</option><option value="cartao">💳 Cartão</option><option value="pix">📱 Pix</option></select>
-            <input id="add-pay-val" type="number" step="0.01" placeholder="Valor">
-            <button class="btn btn-green btn-xs" onclick="handleAddPayment()">+</button>
-          </div>
-          <div id="pay-remain" style="text-align:right; font-size:12px; color:var(--orange)">Restante: R$ 0,00</div>
+      <input id="c-name" class="product-search" placeholder="Cliente">
+      <div id="cart-items" class="cart-items"></div>
+      <div class="cart-total-row big"><span>Total</span><span id="t-val">R$ 0,00</span></div>
+      <div id="pay-area" style="display:${orderType==='mesa'?'none':'block'}">
+        <div id="p-list"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 40px;gap:4px;margin-top:10px">
+          <select id="p-type"><option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option><option value="pix">Pix</option></select>
+          <input id="p-val" type="number" step="0.01" placeholder="Valor">
+          <button class="btn btn-green" onclick="addPay()">+</button>
         </div>
-        <button class="btn btn-red" style="width:100%; margin-top:10px" onclick="submitOrder()">✅ Confirmar Pedido</button>
       </div>
+      <button class="btn btn-red" style="width:100%;margin-top:10px" onclick="saveOrder()">Finalizar Pedido</button>
     </div>
   </div>`;
-  if(orderType==='mesa') loadFreeTables();
 }
 
-function loadFreeTables(){
-  const tables=S.get('pp_tables',[]);
-  const orders=S.get('pp_orders',[]);
-  const free=tables.filter(t=>!orders.find(o=>o.tableId===t.id&&['pending','making','delivery','ready'].includes(o.status)));
-  const sel=document.getElementById('cart-table');
-  if(sel) sel.innerHTML='<option value="">Selecione a Mesa</option>'+free.map(t=>`<option value="${t.id}">Mesa ${t.id}</option>`).join('');
+function addToCart(id){
+  const p=S.get('pp_products',[]).find(x=>x.id===id);
+  cart.push({...p}); renderCart();
+}
+function renderCart(){
+  document.getElementById('cart-items').innerHTML=cart.map((c,i)=>`<div class="cart-item"><span>${c.name}</span><span>${fmt(c.price)} <button onclick="cart.splice(${i},1);renderCart()">✕</button></span></div>`).join('');
+  const t=cart.reduce((s,c)=>s+c.price,0);
+  document.getElementById('t-val').textContent=fmt(t);
+}
+function addPay(){
+  const t=document.getElementById('p-type').value;
+  const v=parseFloat(document.getElementById('p-val').value)||0;
+  if(v>0){ multiPayments.push({type:t,val:v}); document.getElementById('p-val').value=''; renderPays(); }
+}
+function renderPaymentsGeneric(list, listId){
+  const icons={dinheiro:'💵',cartao:'💳',pix:'📱'};
+  document.getElementById(listId).innerHTML=list.map((p,i)=>`<div class="cart-item"><span>${icons[p.type]} ${p.type}</span><span>${fmt(p.val)} <button onclick="removePayGeneric(${i},'${listId}')">✕</button></span></div>`).join('');
+}
+function renderPays(){ renderPaymentsGeneric(multiPayments, 'p-list'); }
+window.removePayGeneric=(i, id)=>{
+  if(id==='p-list'){ multiPayments.splice(i,1); renderPays(); }
+  else { checkoutPayments.splice(i,1); renderPaysCheckout(); }
+};
+
+function saveOrder(){
+  const n=document.getElementById('c-name').value;
+  if(!n || !cart.length) return alert('Dados incompletos');
+  const os=S.get('pp_orders',[]);
+  const total=cart.reduce((s,c)=>s+c.price,0);
+  os.push({id:os.length+1, client:n, total, items:[...cart], type:orderType, payment:orderType==='mesa'?'Aberto':[...multiPayments], status:'pending', date:now()});
+  S.set('pp_orders',os); alert('Sucesso'); navigate('orders');
 }
 
-function handleAddPayment(){
-  const type=document.getElementById('add-pay-type').value;
-  const val=parseFloat(document.getElementById('add-pay-val').value)||0;
-  if(val<=0) return;
-  multiPayments.push({type, value:val});
-  document.getElementById('add-pay-val').value='';
-  renderPayments('multi-pay-list', 'pay-remain', multiPayments, getCartTotal());
+function orders(el){
+  const os=S.get('pp_orders',[]);
+  el.innerHTML=`<div class="table-box"><table>
+    <thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>${os.reverse().map(o=>`<tr><td>#${o.id}</td><td>${o.client}</td><td>${fmt(o.total)}</td><td>${o.status}</td>
+      <td><button class="btn btn-xs btn-blue" onclick="printOrder(${o.id})">🖨️</button>
+      ${o.status!=='done'?`<button class="btn btn-xs btn-green" onclick="checkoutOrder(${o.id})">💰</button>`:''}</td></tr>`).join('')}</tbody>
+  </table></div>`;
 }
 
-function renderPayments(listId, remainId, list, total){
-  const paid = list.reduce((s,p)=>s+p.value,0);
-  const remain = Math.max(0, total - paid);
-  const icons = {dinheiro:'💵', cartao:'💳', pix:'📱'};
-  document.getElementById(listId).innerHTML = list.map((p,i)=>`
-    <div style="display:flex; justify-content:space-between; font-size:12px; background:var(--card2); padding:4px 8px; border-radius:4px; margin-bottom:4px">
-      <span>${icons[p.type]} ${p.type.toUpperCase()}</span>
-      <span>${fmt(p.value)} <button onclick="removePayment(${i},'${listId}','${remainId}',${list===multiPayments?'true':'false'},${total})" style="background:none; border:none; color:var(--red); cursor:pointer">✕</button></span>
-    </div>`).join('');
-  document.getElementById(remainId).textContent = `Restante: ${fmt(remain)}`;
-}
-
-function removePayment(i, listId, remainId, isPDV, total){
-  if(isPDV) { multiPayments.splice(i,1); renderPayments(listId, remainId, multiPayments, total); }
-  else { checkoutPayments.splice(i,1); renderPayments(listId, remainId, checkoutPayments, total); }
-}
-
-function getCartTotal(){ return cart.reduce((s,c)=>s+c.price,0); }
-function updateCartTotal(){
-  const total = getCartTotal();
-  document.getElementById('cart-total-val').textContent = fmt(total);
-  if(orderType!=='mesa') renderPayments('multi-pay-list', 'pay-remain', multiPayments, total);
-}
-
-function submitOrder(){
-  const client=document.getElementById('cart-client').value.trim();
-  if(!client || cart.length===0) return alert('Preencha o cliente e adicione itens');
-  const total=getCartTotal();
-  const paid=multiPayments.reduce((s,p)=>s+p.value,0);
-  if(orderType!=='mesa' && paid < total && !confirm('Valor pago menor que o total. Continuar?')) return;
-  
-  const orders=S.get('pp_orders',[]);
-  const newOrder={
-    id:nextId(orders), client, type:orderType, items:[...cart], total,
-    payment: orderType==='mesa' ? 'Aberto' : [...multiPayments],
-    tableId: orderType==='mesa' ? parseInt(document.getElementById('cart-table').value) : null,
-    status:'pending', createdAt:now()
-  };
-  if(orderType==='mesa' && !newOrder.tableId) return alert('Selecione a mesa');
-  orders.push(newOrder); S.set('pp_orders', orders);
-  alert('Pedido Criado!'); navigate('orders');
-}
-
-// ============================================================
-// CHECKOUT & TABLES
-// ============================================================
-let checkoutPayments = [];
+let checkoutPayments=[];
 function checkoutOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
-  checkoutPayments = Array.isArray(o.payment) ? [...o.payment] : [];
+  checkoutPayments=[];
   openModal(`<div class="modal">
-    <h3>💰 Fechar Comanda — ${o.type==='mesa'?'Mesa '+o.tableId:'Pedido #'+o.id}</h3>
-    <div style="background:var(--card2); padding:16px; border-radius:10px; text-align:center; margin-bottom:15px">
-      <div style="font-size:12px; color:var(--muted)">Total</div>
-      <div style="font-size:28px; font-weight:800; color:var(--red)">${fmt(o.total)}</div>
+    <h3>Fechar Pedido #${o.id}</h3>
+    <div style="text-align:center;margin:15px 0"><div style="font-size:24px;font-weight:800;color:var(--red)">${fmt(o.total)}</div></div>
+    <div id="p-list-chk"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 40px;gap:4px;margin-top:10px">
+      <select id="pc-type"><option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option><option value="pix">Pix</option></select>
+      <input id="pc-val" type="number" step="0.01" placeholder="Valor">
+      <button class="btn btn-green" onclick="addPayCheckout()">+</button>
     </div>
-    <div id="chk-pay-list"></div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr 40px; gap:4px; margin:10px 0">
-      <select id="chk-pay-type"><option value="dinheiro">💵 Dinheiro</option><option value="cartao">💳 Cartão</option><option value="pix">📱 Pix</option></select>
-      <input id="chk-pay-val" type="number" step="0.01" placeholder="Valor">
-      <button class="btn btn-green btn-xs" onclick="addChkPay(${o.total})">+</button>
-    </div>
-    <div id="chk-pay-remain" style="text-align:right; font-size:12px; color:var(--orange)">Restante: ${fmt(o.total)}</div>
-    <div class="modal-footer">
-      <button class="btn btn-blue" onclick="printOrder(${o.id})">🖨️ Imprimir</button>
-      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-green" onclick="finishOrder(${o.id})">Concluir</button>
-    </div>
+    <div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Sair</button><button class="btn btn-green" onclick="finishOrder(${o.id})">Concluir</button></div>
   </div>`);
-  renderPayments('chk-pay-list', 'chk-pay-remain', checkoutPayments, o.total);
 }
-
-function addChkPay(total){
-  const type=document.getElementById('chk-pay-type').value;
-  const val=parseFloat(document.getElementById('chk-pay-val').value)||0;
-  if(val<=0) return;
-  checkoutPayments.push({type, value:val});
-  document.getElementById('chk-pay-val').value='';
-  renderPayments('chk-pay-list', 'chk-pay-remain', checkoutPayments, total);
+function addPayCheckout(){
+  const t=document.getElementById('pc-type').value;
+  const v=parseFloat(document.getElementById('pc-val').value)||0;
+  if(v>0){ checkoutPayments.push({type:t,val:v}); document.getElementById('pc-val').value=''; renderPaysCheckout(); }
 }
-
+function renderPaysCheckout(){ renderPaymentsGeneric(checkoutPayments, 'p-list-chk'); }
 function finishOrder(id){
-  const orders=S.get('pp_orders',[]);
-  const o=orders.find(x=>x.id===id);
-  const paid=checkoutPayments.reduce((s,p)=>s+p.value,0);
-  if(paid < o.total && !confirm('Valor insuficiente. Concluir?')) return;
-  o.payment=[...checkoutPayments]; o.status='done';
-  S.set('pp_orders', orders); closeModal(); navigate(currentPage);
+  const os=S.get('pp_orders',[]); const o=os.find(x=>x.id===id);
+  o.payment=[...checkoutPayments]; o.status='done'; S.set('pp_orders',os); closeModal(); navigate(currentPage);
 }
 
-// ============================================================
-// ORDERS & LISTS
-// ============================================================
-function orders(el){
-  const all=S.get('pp_orders',[]);
-  el.innerHTML=`<div class="page-header"><h2>🧾 Pedidos</h2></div>
-  <div class="table-box">
-    <table><thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Pagamento</th><th>Status</th><th>Ações</th></tr></thead>
-    <tbody>${all.reverse().map(o=>`<tr>
-      <td>#${o.id}</td><td>${o.client}</td><td>${o.type}</td><td>${fmt(o.total)}</td>
-      <td>${renderPayIcons(o.payment)}</td><td>${statusBadge(o.status)}</td>
-      <td>
-        <button class="btn btn-xs btn-blue" onclick="viewOrder(${o.id})">👁</button>
-        ${o.status!=='done'?`<button class="btn btn-xs btn-green" onclick="checkoutOrder(${o.id})">💰</button>`:''}
-      </td>
-    </tr>`).join('')}</tbody></table>
-  </div>`;
+function tables(el){
+  const ts=S.get('pp_tables',[]); const os=S.get('pp_orders',[]);
+  el.innerHTML=`<div class="mesas-grid">${ts.map(t=>{
+    const o=os.find(x=>x.type==='mesa' && x.status!=='done');
+    return `<div class="mesa-card ${o?'occupied':'free'}" onclick="${o?`checkoutOrder(${o.id})`:`navigate('pdv')`}">Mesa ${t.id}</div>`;
+  }).join('')}</div>`;
 }
 
-function renderPayIcons(p){
-  if(p==='Aberto') return '⏳ Aberto';
-  if(!Array.isArray(p)) return p;
-  const icons={dinheiro:'💵', cartao:'💳', pix:'📱'};
-  return p.map(x=>icons[x.type]||'').join(' ');
-}
-
-function viewOrder(id){
-  const o=S.get('pp_orders',[]).find(x=>x.id===id);
-  openModal(`<div class="modal">
-    <h3>Pedido #${o.id}</h3>
-    <p>Cliente: ${o.client}</p>
-    <p>Total: ${fmt(o.total)}</p>
-    <div class="modal-footer"><button class="btn btn-blue" onclick="printOrder(${o.id})">Imprimir</button><button class="btn btn-gray" onclick="closeModal()">Fechar</button></div>
-  </div>`);
+function financeiro(el){
+  const os=S.get('pp_orders',[]).filter(o=>o.status==='done');
+  const total=os.reduce((s,o)=>s+o.total,0);
+  const pays={dinheiro:0,cartao:0,pix:0};
+  os.forEach(o=>o.payment.forEach(p=>{ if(pays[p.type]!==undefined) pays[p.type]+=p.val; }));
+  el.innerHTML=`<div class="page-header"><h2>Financeiro</h2><button class="btn btn-blue" onclick="printFin()">Imprimir Relatório</button></div>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-val">${fmt(total)}</div><div class="metric-label">Total Geral</div></div>
+      <div class="metric-card"><div class="metric-val">${fmt(pays.dinheiro)}</div><div class="metric-label">Dinheiro</div></div>
+      <div class="metric-card"><div class="metric-val">${fmt(pays.cartao)}</div><div class="metric-label">Cartão</div></div>
+      <div class="metric-card"><div class="metric-val">${fmt(pays.pix)}</div><div class="metric-label">Pix</div></div>
+    </div>`;
 }
 
 function printOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
-  const el=document.getElementById('print-section');
-  el.innerHTML=`<h2>PIZZARIA PATRÍCIO</h2><p>Pedido #${o.id}</p><p>Cliente: ${o.client}</p><p>Total: ${fmt(o.total)}</p><p>Pagamento: ${renderPayIcons(o.payment)}</p>`;
+  const pr=document.getElementById('print-section');
+  pr.innerHTML=`<h2>PIZZARIA PATRÍCIO</h2><p>Pedido #${o.id}</p><p>Cliente: ${o.client}</p><p>Total: ${fmt(o.total)}</p>`;
   window.print();
 }
-
-// ============================================================
-// REST OF APP (Tables, Kitchen, Delivery, etc.)
-// ============================================================
-function tables(el){
-  const ms=S.get('pp_tables',[]);
-  const os=S.get('pp_orders',[]);
-  el.innerHTML=`<div class="mesas-grid">${ms.map(m=>{
-    const o=os.find(x=>x.tableId===m.id && x.status!=='done');
-    return `<div class="mesa-card ${o?'occupied':'free'}" onclick="${o?`checkoutOrder(${o.id})`:`navigate('pdv')`}">
-      <div class="mesa-num">Mesa ${m.id}</div><div class="mesa-status">${o?'Ocupada':'Livre'}</div>
-    </div>`;
-  }).join('')}</div>`;
-}
-
-function productCard(p){
-  return `<div class="product-card" onclick="addToCart(${p.id})"><div class="pc-icon">🍕</div><div class="pc-name">${p.name}</div><div class="pc-price">${fmt(p.sizes[0].price)}</div></div>`;
-}
-function addToCart(id){
-  const p=S.get('pp_products',[]).find(x=>x.id===id);
-  cart.push({name:p.name, price:p.sizes[0].price});
-  renderCart(); updateCartTotal();
-}
-function renderCart(){
-  document.getElementById('cart-items').innerHTML = cart.map((c,i)=>`
-    <div class="cart-item"><span>${c.name}</span><span>${fmt(c.price)} <button onclick="cart.splice(${i},1);renderCart();updateCartTotal()">✕</button></span></div>`).join('');
-}
-
-// Boilerplate stubs
-function kitchen(el){ el.innerHTML='<h2>Cozinha</h2>'; }
-function delivery(el){ el.innerHTML='<h2>Delivery</h2>'; }
-function products(el){ el.innerHTML='<h2>Produtos</h2>'; }
-function borders(el){ el.innerHTML='<h2>Bordas</h2>'; }
-function clients(el){ el.innerHTML='<h2>Clientes</h2>'; }
-function users(el){ el.innerHTML='<h2>Usuários</h2>'; }
-function financeiro(el){
-  const orders = S.get('pp_orders', []).filter(o => o.status === 'done');
-  const total = orders.reduce((s, o) => s + (o.total || 0), 0);
-  
-  const byPayment = { dinheiro: 0, cartao: 0, pix: 0 };
-  orders.forEach(o => {
-    if (Array.isArray(o.payment)) {
-      o.payment.forEach(p => { if (byPayment[p.type] !== undefined) byPayment[p.type] += p.value; });
-    } else if (byPayment[o.payment] !== undefined) {
-      byPayment[o.payment] += o.total || 0;
-    }
-  });
-
-  const cost = total * 0.45; // Exemplo de custo 45%
-  const profit = total - cost;
-
-  el.innerHTML = `
-    <div class="page-header">
-      <h2>💰 Financeiro / Relatórios</h2>
-      <button class="btn btn-blue btn-sm" onclick="printFinancialReport()">🖨️ Imprimir Relatório</button>
-    </div>
-    
-    <div class="metric-grid">
-      <div class="metric-card">
-        <div class="metric-icon" style="background:rgba(31,111,235,.15)">💵</div>
-        <div><div class="metric-val">${fmt(total)}</div><div class="metric-label">Faturamento Total</div></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon" style="background:rgba(230,57,70,.15)">📉</div>
-        <div><div class="metric-val">${fmt(cost)}</div><div class="metric-label">Custo Est. (45%)</div></div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-icon" style="background:rgba(46,160,67,.15)">📈</div>
-        <div><div class="metric-val">${fmt(profit)}</div><div class="metric-label">Lucro Estimado</div></div>
-      </div>
-    </div>
-
-    <div class="chart-row" style="margin-top:20px">
-      <div class="chart-box">
-        <h3>Resumo por Forma de Pagamento</h3>
-        <table style="margin-top:10px">
-          <tr><td>💵 Dinheiro</td><td style="text-align:right"><strong>${fmt(byPayment.dinheiro)}</strong></td></tr>
-          <tr><td>💳 Cartão</td><td style="text-align:right"><strong>${fmt(byPayment.cartao)}</strong></td></tr>
-          <tr><td>📱 Pix</td><td style="text-align:right"><strong>${fmt(byPayment.pix)}</strong></td></tr>
-          <tr style="border-top:2px solid var(--border)">
-            <td><strong>TOTAL GERAL</strong></td>
-            <td style="text-align:right; color:var(--red)"><strong>${fmt(total)}</strong></td>
-          </tr>
-        </table>
-      </div>
-      <div class="chart-box">
-        <h3>Últimas Vendas Concluídas</h3>
-        <div style="max-height:200px; overflow-y:auto; font-size:12px">
-          ${orders.slice(-10).reverse().map(o => `
-            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border)">
-              <span>#${o.id} - ${o.client}</span>
-              <strong>${fmt(o.total)}</strong>
-            </div>
-          `).join('') || '<p>Nenhuma venda recente</p>'}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function printFinancialReport() {
-  const orders = S.get('pp_orders', []).filter(o => o.status === 'done');
-  const total = orders.reduce((s, o) => s + (o.total || 0), 0);
-  const byPayment = { dinheiro: 0, cartao: 0, pix: 0 };
-  orders.forEach(o => {
-    if (Array.isArray(o.payment)) {
-      o.payment.forEach(p => { if (byPayment[p.type] !== undefined) byPayment[p.type] += p.value; });
-    } else if (byPayment[o.payment] !== undefined) {
-      byPayment[o.payment] += o.total || 0;
-    }
-  });
-
-  const el = document.getElementById('print-section');
-  el.innerHTML = `
-    <h2 style="text-align:center">RELATÓRIO FINANCEIRO</h2>
-    <p style="text-align:center">Pizzaria Patrício - Gerado em: ${now()}</p>
-    <hr style="border:none; border-top:1px dashed #000; margin:10px 0">
-    
-    <div style="margin-bottom:15px">
-      <p><strong>RESUMO DE VENDAS:</strong></p>
-      <table style="width:100%">
-        <tr><td>Faturamento Total:</td><td style="text-align:right"><strong>${fmt(total)}</strong></td></tr>
-        <tr><td>Custo Estimado (45%):</td><td style="text-align:right">${fmt(total * 0.45)}</td></tr>
-        <tr><td>Lucro Estimado:</td><td style="text-align:right"><strong>${fmt(total - (total * 0.45))}</strong></td></tr>
-      </table>
-    </div>
-
-    <div style="margin-bottom:15px">
-      <p><strong>POR FORMA DE PAGAMENTO:</strong></p>
-      <table style="width:100%">
-        <tr><td>Dinheiro:</td><td style="text-align:right">${fmt(byPayment.dinheiro)}</td></tr>
-        <tr><td>Cartão:</td><td style="text-align:right">${fmt(byPayment.cartao)}</td></tr>
-        <tr><td>Pix:</td><td style="text-align:right">${fmt(byPayment.pix)}</td></tr>
-      </table>
-    </div>
-
-    <div style="margin-bottom:15px">
-      <p><strong>DETALHE DAS ÚLTIMAS VENDAS:</strong></p>
-      <table style="width:100%; font-size:10px">
-        <thead>
-          <tr style="border-bottom:1px solid #000">
-            <th style="text-align:left">Pedido</th>
-            <th style="text-align:left">Cliente</th>
-            <th style="text-align:right">Valor</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${orders.slice(-20).reverse().map(o => `
-            <tr>
-              <td>#${o.id}</td>
-              <td>${o.client.substring(0,15)}</td>
-              <td style="text-align:right">${fmt(o.total)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="footer" style="text-align:center; font-size:10px; margin-top:20px">
-      <p>Fim do Relatório</p>
-    </div>
-  `;
+function printFin(){
+  const os=S.get('pp_orders',[]).filter(o=>o.status==='done');
+  const total=os.reduce((s,o)=>s+o.total,0);
+  const pr=document.getElementById('print-section');
+  pr.innerHTML=`<h2>RELATÓRIO FINANCEIRO</h2><p>Total: ${fmt(total)}</p><p>Data: ${now()}</p>`;
   window.print();
 }
-function settings(el){ el.innerHTML='<h2>Configurações</h2>'; }
-function account(el){ el.innerHTML='<h2>Conta</h2>'; }
-
-function setOrderType(t,b){ orderType=t; navigate('pdv'); }
-function filterCat(c,b){ navigate('pdv'); }
-function filterProducts(v){ navigate('pdv'); }
 
 initData();
 </script>
