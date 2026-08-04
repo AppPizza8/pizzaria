@@ -34,7 +34,11 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .app-header .hamburger:hover{background:var(--card2);color:var(--text)}
 .app-header h2{font-size:18px;font-weight:600;flex:1}
 .app-header .hactions{display:flex;align-items:center;gap:10px}
+.app-header .hactions .icon-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:6px;border-radius:8px;transition:.2s;position:relative}
+.app-header .hactions .icon-btn:hover{background:var(--card2);color:var(--text)}
+.notif-dot{position:absolute;top:4px;right:4px;width:8px;height:8px;background:var(--red);border-radius:50%}
 .user-chip{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);padding:5px 12px;border-radius:20px;font-size:13px}
+.user-chip .badge{background:var(--red);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
 .btn-logout{background:none;border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;transition:.2s}
 .btn-logout:hover{border-color:var(--red);color:var(--red)}
 
@@ -50,85 +54,166 @@ body{font-family:'Segoe UI',sans-serif;background:var(--bg);color:var(--text);mi
 .sidebar-logo .logo-text span{color:var(--muted);font-size:11px}
 .nav-section{padding:0 12px;margin-bottom:4px}
 .nav-section-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;padding:8px 8px 4px;overflow:hidden;white-space:nowrap}
+#sidebar.collapsed .nav-section-label{opacity:0}
 .nav-btn{width:100%;background:none;border:none;color:var(--muted);text-align:left;padding:9px 10px;cursor:pointer;font-size:13px;border-radius:8px;display:flex;align-items:center;gap:10px;transition:.15s;white-space:nowrap;overflow:hidden;position:relative}
 .nav-btn:hover{background:var(--card2);color:var(--text)}
 .nav-btn.active{background:rgba(230,57,70,.15);color:var(--red);font-weight:600}
-.nav-icon{font-size:16px;width:20px;text-align:center}
-.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px}
+.nav-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center}
+.nav-btn .nav-label{overflow:hidden}
+#sidebar.collapsed .nav-label{display:none}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;flex-shrink:0}
+#sidebar.collapsed .nav-badge{display:none}
 
 /* ===== MAIN ===== */
 #main-content{flex:1;overflow-y:auto;padding:24px;background:var(--bg)}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.page{display:none}
+.page.active{display:block}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .page-header h2{font-size:22px;font-weight:700}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
 
-/* ===== CARDS & METRICS ===== */
+/* ===== CARDS ===== */
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:20px}
 .metric-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:16px;transition:.2s}
+.metric-card:hover{border-color:#444;transform:translateY(-1px)}
 .metric-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
-.metric-val{font-size:24px;font-weight:700;line-height:1.1}
-.metric-label{font-size:12px;color:var(--muted);margin-top:2px}
+.metric-card .metric-val{font-size:24px;font-weight:700;line-height:1.1}
+.metric-card .metric-label{font-size:12px;color:var(--muted);margin-top:2px}
+.metric-card .metric-sub{font-size:11px;margin-top:3px}
 
+/* ===== CHARTS ===== */
 .chart-row{display:grid;grid-template-columns:1fr 380px;gap:16px;margin-bottom:20px}
 .chart-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
 .chart-box h3{font-size:15px;margin-bottom:16px}
+.ranking-list{display:flex;flex-direction:column;gap:10px}
+.rank-item{display:flex;align-items:center;gap:10px}
+.rank-num{width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rank-num.gold{background:#f0c000;color:#000}
+.rank-num.silver{background:#8b949e}
+.rank-num.bronze{background:#fb8500}
+.rank-bar-wrap{flex:1}
+.rank-name{font-size:13px;margin-bottom:3px}
+.rank-bar{height:6px;background:var(--red);border-radius:3px;opacity:.8}
+.rank-count{font-size:12px;color:var(--muted);flex-shrink:0}
 
 /* ===== TABLES ===== */
 .table-box{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 table{width:100%;border-collapse:collapse}
-th{background:var(--card2);padding:11px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase}
+th{background:var(--card2);padding:11px 16px;text-align:left;font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
 td{padding:12px 16px;font-size:14px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
 
 /* ===== BUTTONS ===== */
 .btn{padding:9px 18px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px}
 .btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:var(--red2)}
 .btn-green{background:var(--green);color:#fff}
 .btn-blue{background:var(--blue);color:#fff}
 .btn-gray{background:var(--card2);color:var(--text);border:1px solid var(--border)}
-.btn-xs{padding:3px 8px;font-size:11px}
+.btn-gray:hover{background:#2d333b}
 .btn-sm{padding:5px 10px;font-size:12px}
+.btn-xs{padding:3px 8px;font-size:11px}
+
+/* ===== FORMS ===== */
+.form-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px}
+.form-row{margin-bottom:16px}
+.form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:10px 12px;background:#0d1117;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;transition:.2s}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--red)}
+.form-row select option{background:var(--card)}
+.form-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+/* ===== STATUS ===== */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;gap:4px}
+.badge-pending{background:rgba(240,192,0,.15);color:var(--yellow);border:1px solid rgba(240,192,0,.3)}
+.badge-making{background:rgba(31,111,235,.15);color:#58a6ff;border:1px solid rgba(31,111,235,.3)}
+.badge-delivery{background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)}
+.badge-ready{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
+.badge-done{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
+.badge-cancelled{background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)}
+.badge-active{background:rgba(46,160,67,.15);color:#3fb950;border:1px solid rgba(46,160,67,.3)}
+.badge-inactive{background:rgba(139,148,158,.15);color:var(--muted);border:1px solid rgba(139,148,158,.2)}
+.badge-dine{background:rgba(251,133,0,.15);color:var(--orange);border:1px solid rgba(251,133,0,.3)}
+
+/* ===== MODAL ===== */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;width:520px;max-width:100%;max-height:90vh;overflow-y:auto}
+.modal h3{font-size:17px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.modal-lg{width:700px}
 
 /* ===== PDV ===== */
 .pdv-layout{display:grid;grid-template-columns:1fr 360px;gap:16px;min-height:calc(100vh - 160px)}
 .pdv-products{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px}
 .pdv-cart{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;flex-direction:column}
 .product-search{width:100%;padding:10px 14px;background:#0d1117;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none;margin-bottom:14px}
+.product-search:focus{border-color:var(--red)}
 .cat-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.cat-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:12px;transition:.15s}
-.cat-tab.active{background:var(--red);color:#fff;border-color:var(--red)}
+.cat-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
+.cat-tab.active,.cat-tab:hover{background:var(--red);color:#fff;border-color:var(--red)}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.product-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 12px;cursor:pointer;text-align:center;transition:.2s}
+.product-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px 12px;cursor:pointer;transition:.15s;text-align:center}
 .product-card:hover{border-color:var(--red);transform:translateY(-2px)}
-.pc-icon{font-size:24px;margin-bottom:4px}
-.pc-name{font-size:13px;font-weight:600;margin:4px 0}
-.pc-price{font-size:12px;color:var(--red)}
+.pc-icon{font-size:28px;margin-bottom:6px}
+.product-card .pc-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.product-card .pc-price{font-size:12px;color:var(--red)}
+.product-card .pc-sizes{font-size:10px;color:var(--muted);margin-top:2px}
 
 .cart-items{flex:1;overflow-y:auto;margin-bottom:14px}
-.cart-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
-.cart-total-row.big{font-size:18px;font-weight:700;display:flex;justify-content:space-between;margin-bottom:10px}
+.cart-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.cart-item:last-child{border-bottom:none}
+.cart-item-info{flex:1;min-width:0}
+.cart-item-name{font-size:13px;font-weight:600}
+.cart-item-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.cart-item-price{font-size:13px;font-weight:700;color:var(--red);flex-shrink:0}
+.cart-item-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;transition:.15s}
+.cart-item-remove:hover{color:var(--red);background:rgba(230,57,70,.1)}
+.cart-total-box{border-top:1px solid var(--border);padding-top:14px}
+.cart-total-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:14px}
+.cart-total-row.big{font-size:18px;font-weight:700;color:var(--text)}
+.cart-obs{width:100%;padding:8px 10px;background:#0d1117;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;resize:none;margin-bottom:12px}
+.payment-select{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+.pay-btn{padding:8px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--muted);font-size:12px;cursor:pointer;transition:.15s;font-weight:600}
+.pay-btn.active,.pay-btn:hover{border-color:var(--green);color:var(--green);background:rgba(46,160,67,.1)}
 
-/* ===== MODAL ===== */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:999}
-.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:520px;max-width:95%;max-height:90vh;overflow-y:auto}
-.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+/* ===== KITCHEN ===== */
+.kitchen-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.kitchen-col-title{font-size:13px;font-weight:700;margin-bottom:10px;padding:8px 12px;border-radius:8px;text-align:center}
+.kc-pending{background:rgba(240,192,0,.1);color:var(--yellow)}
+.kc-making{background:rgba(31,111,235,.1);color:#58a6ff}
+.kc-ready{background:rgba(46,160,67,.1);color:#3fb950}
+.kitchen-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.kitchen-card.urgent{border-color:var(--red);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(230,57,70,.3)}50%{box-shadow:0 0 0 6px rgba(230,57,70,0)}}
+.kitchen-card h4{font-size:14px;font-weight:700;margin-bottom:6px;display:justify;justify-content:space-between}
+.kitchen-card .kc-items{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px}
+.kitchen-card .kc-time{font-size:11px;color:var(--muted);margin-bottom:8px}
 
-/* ===== TABLES GRID ===== */
+/* ===== SIZES CONFIG ===== */
+.size-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:#0d1117;border-radius:8px;border:1px solid var(--border)}
+.size-row input{flex:1;padding:6px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.size-row input:focus{border-color:var(--red)}
+.size-row .remove-size{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;transition:.15s}
+.size-row .remove-size:hover{color:var(--red)}
+
+/* ===== DELIVERY CARDS ===== */
+.delivery-cards{display:flex;flex-direction:column;gap:10px}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  body * { visibility: hidden; }
+  #print-section, #print-section * { visibility: visible; }
+  #print-section { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; padding: 20px; display: block !important; font-family: 'Courier New', Courier, monospace; }
+}
+#print-section { display: none; }
+
 .mesas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px}
 .mesa-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:.2s}
 .mesa-card.occupied{border-color:var(--orange);background:rgba(251,133,0,.05)}
 .mesa-card.free{border-color:var(--green);background:rgba(46,160,67,.05)}
 .mesa-num{font-size:18px;font-weight:800}
-
-/* ===== PRINT ===== */
-@media print {
-  body * { visibility: hidden; }
-  #print-section, #print-section * { visibility: visible; }
-  #print-section { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; padding: 20px; display: block !important; }
-}
-#print-section { display: none; color: #000; font-family: 'Courier New', Courier, monospace; }
-
-.badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700}
-.badge-pending{background:rgba(240,192,0,.15);color:var(--yellow)}
-.badge-done{background:rgba(46,160,67,.15);color:var(--green)}
 </style>
 </head>
 <body>
@@ -140,7 +225,7 @@ td{padding:12px 16px;font-size:14px;border-bottom:1px solid var(--border)}
     <input id="login-user" placeholder="Usuário" value="admin">
     <input id="login-pass" type="password" placeholder="Senha" value="pizza123">
     <button onclick="doLogin()">Entrar</button>
-    <div id="login-error" class="login-error">Usuário ou senha incorretos</div>
+    <div id="login-error" class="login-error">Erro no login</div>
   </div>
 </div>
 
@@ -163,25 +248,14 @@ td{padding:12px 16px;font-size:14px;border-bottom:1px solid var(--border)}
 <script>
 // --- STORAGE ---
 const S = {
-  get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},
-  set:(k,v)=>{
-    localStorage.setItem(k,JSON.stringify(v));
-    if(typeof firebaseDb!=='undefined'&&firebaseDb&&useFirebase){
-      try{firebaseDb.ref('pizzaria/'+k).set(v);}catch(e){}
-    }
-  }
+  get:(k,d)=>JSON.parse(localStorage.getItem(k))??d,
+  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
 };
 
 function initData(){
-  if(!S.get('pp_users')) S.set('pp_users', [
-    {id:1,username:'admin',password:'pizza123',name:'Administrador',role:'admin',active:true},
-    {id:2,username:'gerente',password:'pizza123',name:'Gerente',role:'gerente',active:true},
-    {id:3,username:'caixa',password:'pizza123',name:'Caixa',role:'caixa',active:true},
-    {id:4,username:'cozinha',password:'pizza123',name:'Cozinha',role:'cozinha',active:true},
-    {id:5,username:'entregador',password:'pizza123',name:'Entregador',role:'entregador',active:true},
-  ]);
+  if(!S.get('pp_users')) S.set('pp_users', [{id:1,username:'admin',password:'pizza123',name:'Administrador',role:'admin',active:true}]);
   if(!S.get('pp_orders')) S.set('pp_orders', []);
-  if(!S.get('pp_tables')) S.set('pp_tables', Array.from({length:12},(_,i)=>({id:i+1,status:'free'})));
+  if(!S.get('pp_tables')) S.set('pp_tables', Array.from({length:12},(_,i)=>({id:i+1})));
   if(!S.get('pp_products')) S.set('pp_products', [
     {id:1,name:'Calabresa',category:'Pizza',active:true,sizes:[{name:'Broto',price:28},{name:'Média',price:38},{name:'Grande',price:48},{name:'Família',price:58}]},
     {id:2,name:'Margherita',category:'Pizza',active:true,sizes:[{name:'Broto',price:26},{name:'Média',price:36},{name:'Grande',price:45},{name:'Família',price:55}]},
@@ -201,11 +275,10 @@ function doLogin(){
   const u=document.getElementById('login-user').value;
   const p=document.getElementById('login-pass').value;
   const user=S.get('pp_users',[]).find(x=>x.username===u && x.password===p);
-  if(!user) return alert('Usuário ou senha incorretos');
+  if(!user) return alert('Erro');
   currentUser=user;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('header-name').textContent=user.name;
   buildSidebar(); navigate('dashboard');
 }
 function doLogout(){ location.reload(); }
@@ -213,16 +286,11 @@ function doLogout(){ location.reload(); }
 // --- NAV ---
 let currentPage = '';
 const PAGES = {
-  dashboard: {icon:'📊',label:'Dashboard',section:'PRINCIPAL'},
-  pdv: {icon:'🖥️',label:'PDV',section:'PRINCIPAL'},
-  orders: {icon:'🧾',label:'Pedidos',section:'PRINCIPAL'},
-  tables: {icon:'🪑',label:'Mesas',section:'PRINCIPAL'},
-  kitchen: {icon:'👨‍🍳',label:'Cozinha',section:'PRODUÇÃO'},
-  delivery: {icon:'🛵',label:'Delivery',section:'PRODUÇÃO'},
-  financeiro: {icon:'💰',label:'Financeiro',section:'GESTÃO'},
-  products: {icon:'🍕',label:'Produtos',section:'GESTÃO'},
-  clients: {icon:'👤',label:'Clientes',section:'GESTÃO'},
-  settings: {icon:'⚙️',label:'Sistema',section:'SISTEMA'}
+  dashboard: {icon:'📊',label:'Dashboard'},
+  pdv: {icon:'🖥️',label:'PDV'},
+  orders: {icon:'🧾',label:'Pedidos'},
+  tables: {icon:'🪑',label:'Mesas'},
+  financeiro: {icon:'💰',label:'Financeiro'}
 };
 function buildSidebar(){
   let h='';
@@ -237,7 +305,6 @@ function navigate(p){
   const el=document.getElementById('main-content');
   buildSidebar();
   if(window[p]) window[p](el);
-  else el.innerHTML='<h2>Em desenvolvimento</h2>';
 }
 function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('collapsed'); }
 
@@ -251,7 +318,7 @@ function openModal(h){
 }
 function closeModal(){ document.querySelectorAll('.modal-overlay').forEach(m=>m.remove()); }
 
-// --- DASHBOARD ---
+// --- PAGES ---
 function dashboard(el){
   const os=S.get('pp_orders',[]).filter(o=>o.status==='done');
   const total=os.reduce((s,o)=>s+o.total,0);
@@ -261,7 +328,6 @@ function dashboard(el){
   </div>`;
 }
 
-// --- PDV ---
 let cart=[];
 let orderType='delivery';
 let multiPayments=[];
@@ -310,107 +376,45 @@ function loadFreeTables(){
 
 function productCard(p){
   const icons={Pizza:'🍕',Salgado:'🥐',Bebida:'🥤'};
-  const minPrice = p.sizes ? p.sizes[0].price : p.price;
-  return `<div class="product-card" onclick="openProductOptions(${p.id})">
+  return `<div class="product-card" onclick="addToCart(${p.id})">
     <div class="pc-icon">${icons[p.category]||'🍽️'}</div>
     <div class="pc-name">${p.name}</div>
-    <div class="pc-price">A partir de ${fmt(minPrice)}</div>
+    <div class="pc-price">${fmt(p.sizes[0].price)}</div>
   </div>`;
 }
 
-function openProductOptions(id){
+function addToCart(id){
   const p=S.get('pp_products',[]).find(x=>x.id===id);
-  const borders=S.get('pp_borders',[]);
-  openModal(`<div class="modal">
-    <h3>${p.name}</h3>
-    <div style="margin:15px 0">
-      <label style="font-size:12px;color:var(--muted)">Tamanho</label>
-      <select id="opt-size" style="width:100%;padding:8px;background:#0d1117;color:#fff;border:1px solid var(--border);border-radius:8px">
-        ${p.sizes.map(s=>`<option value="${s.price}">${s.name} - ${fmt(s.price)}</option>`).join('')}
-      </select>
-    </div>
-    ${p.category==='Pizza'?`
-    <div style="margin:15px 0">
-      <label style="font-size:12px;color:var(--muted)">Borda</label>
-      <select id="opt-border" style="width:100%;padding:8px;background:#0d1117;color:#fff;border:1px solid var(--border);border-radius:8px">
-        ${borders.map(b=>`<option value="${b.price}">${b.name} ${b.price>0?'+ '+fmt(b.price):''}</option>`).join('')}
-      </select>
-    </div>`:''}
-    <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-red" onclick="addToCartComplete(${p.id})">Adicionar</button>
-    </div>
-  </div>`);
-}
-
-function addToCartComplete(id){
-  const p=S.get('pp_products',[]).find(x=>x.id===id);
-  const sEl=document.getElementById('opt-size');
-  const bEl=document.getElementById('opt-border');
-  const price = parseFloat(sEl.value) + (bEl?parseFloat(bEl.value):0);
-  const desc = sEl.options[sEl.selectedIndex].text.split(' - ')[0] + (bEl && bEl.selectedIndex>0 ? ' + Borda' : '');
-  cart.push({name:p.name, desc, price});
-  closeModal(); renderCart(); updateCartTotal();
+  cart.push({name:p.name, price:p.sizes[0].price});
+  renderCart(); updateCartTotal();
 }
 
 function renderCart(){
   document.getElementById('cart-items').innerHTML=cart.map((c,i)=>`
-    <div class="cart-item">
-      <div><strong>${c.name}</strong><br><small style="color:var(--muted)">${c.desc}</small></div>
-      <span>${fmt(c.price)} <button onclick="cart.splice(${i},1);renderCart();updateCartTotal()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></span>
-    </div>`).join('');
-  updateCartTotal();
+    <div class="cart-item"><span>${c.name}</span><span>${fmt(c.price)} <button onclick="cart.splice(${i},1);renderCart();updateCartTotal()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></span></div>`).join('');
 }
 
 function addPay(){
   const t=document.getElementById('p-type').value;
   const v=parseFloat(document.getElementById('p-val').value)||0;
-  if(v>0){ multiPayments.push({type:t,val:v}); document.getElementById('p-val').value=''; renderPays(); }
+  if(v>0){ multiPayments.push({type:t, value:v}); document.getElementById('p-val').value=''; renderPays(); }
 }
 function renderPays(){
   const icons={dinheiro:'💵',cartao:'💳',pix:'📱'};
   document.getElementById('p-list').innerHTML=multiPayments.map((p,i)=>`
-    <div class="cart-item"><span>${icons[p.type]} ${p.type.toUpperCase()}</span><span>${fmt(p.val)} <button onclick="multiPayments.splice(${i},1);renderPays()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></span></div>`).join('');
+    <div class="cart-item"><span>${icons[p.type]} ${p.type.toUpperCase()}</span><span>${fmt(p.value)} <button onclick="multiPayments.splice(${i},1);renderPays()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></span></div>`).join('');
 }
 
-function getCartTotal(){ return cart.reduce((s,c)=>s+c.price,0); }
-function updateCartTotal(){ 
-  const el = document.getElementById('t-val');
-  if(el) el.textContent=fmt(getCartTotal()); 
-}
+function updateCartTotal(){ document.getElementById('t-val').textContent=fmt(cart.reduce((s,c)=>s+c.price,0)); }
 
 function saveOrder(){
   const n=document.getElementById('c-name').value.trim();
   if(!n || !cart.length) return alert('Informe o cliente e adicione itens');
-  const total=getCartTotal();
+  const total=cart.reduce((s,c)=>s+c.price,0);
   const tableId = orderType==='mesa' ? parseInt(document.getElementById('c-table').value) : null;
-  if(orderType==='mesa' && !tableId) return alert('Selecione a mesa');
-  
   const os=S.get('pp_orders',[]);
   os.push({id:os.length+1, client:n, total, items:[...cart], type:orderType, tableId, payment:orderType==='mesa'?'Aberto':[...multiPayments], status:'pending', date:now()});
   S.set('pp_orders',os); alert('Pedido Criado!'); navigate('orders');
-}
-
-// --- ORDERS ---
-function orders(el){
-  const os=S.get('pp_orders',[]);
-  el.innerHTML=`<div class="table-box"><table>
-    <thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Pagamento</th><th>Status</th><th>Ações</th></tr></thead>
-    <tbody>${os.slice().reverse().map(o=>`<tr>
-      <td>#${o.id}</td><td>${o.client}</td><td>${o.type==='mesa'?'🪑 Mesa '+o.tableId:o.type}</td><td>${fmt(o.total)}</td>
-      <td>${renderPayIcons(o.payment)}</td><td><span class="badge ${o.status==='done'?'badge-done':'badge-pending'}">${o.status}</span></td>
-      <td>
-        <button class="btn btn-xs btn-blue" onclick="printOrder(${o.id})">🖨️</button>
-        ${o.status!=='done'?`<button class="btn btn-xs btn-green" onclick="checkoutOrder(${o.id})">💰</button>`:''}
-      </td></tr>`).join('')}</tbody>
-  </table></div>`;
-}
-
-function renderPayIcons(p){
-  if(p==='Aberto') return '⏳ Aberto';
-  if(!Array.isArray(p)) return '---';
-  const icons={dinheiro:'💵',cartao:'💳',pix:'📱'};
-  return p.map(x=>icons[x.type]||'').join(' ');
 }
 
 let checkoutPayments=[];
@@ -418,77 +422,83 @@ function checkoutOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   checkoutPayments=Array.isArray(o.payment)?[...o.payment]:[];
   openModal(`<div class="modal">
-    <h3>Fechar Pedido #${o.id}</h3>
-    <div style="background:var(--card2);padding:15px;border-radius:10px;text-align:center;margin:15px 0">
-      <div style="font-size:12px;color:var(--muted)">Total a Pagar</div>
-      <div style="font-size:28px;font-weight:800;color:var(--red)">${fmt(o.total)}</div>
+    <h3>💰 Fechar Comanda — ${o.type==='mesa'?'Mesa '+o.tableId:'Pedido #'+o.id}</h3>
+    <div style="background:var(--card2); padding:16px; border-radius:10px; text-align:center; margin-bottom:15px">
+      <div style="font-size:12px; color:var(--muted)">Total</div>
+      <div style="font-size:28px; font-weight:800; color:var(--red)">${fmt(o.total)}</div>
     </div>
-    <div id="p-list-chk"></div>
-    <div style="display:grid;grid-template-columns: 1fr 1fr 40px;gap:4px;margin-top:10px">
-      <select id="pc-type"><option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option><option value="pix">Pix</option></select>
-      <input id="pc-val" type="number" step="0.01" placeholder="Valor">
-      <button class="btn btn-green btn-xs" onclick="addPayCheckout(${o.total})">+</button>
+    <div id="chk-pay-list"></div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr 40px; gap:4px; margin:10px 0">
+      <select id="chk-pay-type"><option value="dinheiro">💵 Dinheiro</option><option value="cartao">💳 Cartão</option><option value="pix">📱 Pix</option></select>
+      <input id="chk-pay-val" type="number" step="0.01" placeholder="Valor">
+      <button class="btn btn-green btn-xs" onclick="addChkPay(${o.total})">+</button>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-blue" onclick="printOrder(${id})">🖨️ Imprimir</button>
-      <button class="btn btn-gray" onclick="closeModal()">Sair</button>
-      <button class="btn btn-green" onclick="finishOrder(${id})">Concluir</button>
+      <button class="btn btn-blue" onclick="printOrder(${o.id})">🖨️ Imprimir</button>
+      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="finishOrder(${o.id})">Concluir</button>
     </div>
   </div>`);
-  renderPaysCheckout();
+  renderChkPays();
 }
-function addPayCheckout(total){
-  const t=document.getElementById('pc-type').value;
-  const v=parseFloat(document.getElementById('pc-val').value)||0;
-  if(v>0){ checkoutPayments.push({type:t,val:v}); document.getElementById('pc-val').value=''; renderPaysCheckout(); }
+function addChkPay(total){
+  const type=document.getElementById('chk-pay-type').value;
+  const val=parseFloat(document.getElementById('chk-pay-val').value)||0;
+  if(val>0){ checkoutPayments.push({type, value:val}); document.getElementById('chk-pay-val').value=''; renderChkPays(); }
 }
-function renderPaysCheckout(){
-  const icons={dinheiro:'💵',cartao:'💳',pix:'📱'};
-  document.getElementById('p-list-chk').innerHTML=checkoutPayments.map((p,i)=>`
-    <div class="cart-item"><span>${icons[p.type]} ${p.type.toUpperCase()}</span><span>${fmt(p.val)} <button onclick="checkoutPayments.splice(${i},1);renderPaysCheckout()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></span></div>`).join('');
+function renderChkPays(){
+  const icons={dinheiro:'💵', cartao:'💳', pix:'📱'};
+  document.getElementById('chk-pay-list').innerHTML=checkoutPayments.map((p,i)=>`
+    <div class="cart-item"><span>${icons[p.type]} ${p.type.toUpperCase()}</span><span>${fmt(p.value)} <button onclick="checkoutPayments.splice(${i},1);renderChkPays()" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></span></div>`).join('');
 }
 function finishOrder(id){
-  const os=S.get('pp_orders',[]); const o=os.find(x=>x.id===id);
-  const paid=checkoutPayments.reduce((s,p)=>s+p.val,0);
-  if(paid < o.total && !confirm('Valor insuficiente. Concluir mesmo assim?')) return;
-  o.payment=[...checkoutPayments]; o.status='done'; S.set('pp_orders',os); closeModal(); navigate(currentPage);
+  const orders=S.get('pp_orders',[]); const o=orders.find(x=>x.id===id);
+  o.payment=[...checkoutPayments]; o.status='done'; S.set('pp_orders', orders); closeModal(); navigate(currentPage);
 }
 
-// --- TABLES ---
+function orders(el){
+  const all=S.get('pp_orders',[]);
+  el.innerHTML=`<div class="page-header"><h2>🧾 Pedidos</h2></div>
+  <div class="table-box">
+    <table><thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Total</th><th>Pagamento</th><th>Status</th><th>Ações</th></tr></thead>
+    <tbody>${all.slice().reverse().map(o=>`<tr>
+      <td>#${o.id}</td><td>${o.client}</td><td>${o.type}</td><td>${fmt(o.total)}</td>
+      <td>${renderPayIcons(o.payment)}</td><td>${o.status}</td>
+      <td><button class="btn btn-xs btn-blue" onclick="printOrder(${o.id})">🖨️</button>
+      ${o.status!=='done'?`<button class="btn btn-xs btn-green" onclick="checkoutOrder(${o.id})">💰</button>`:''}</td>
+    </tr>`).join('')}</tbody></table>
+  </div>`;
+}
+
+function renderPayIcons(p){
+  if(p==='Aberto') return '⏳ Aberto';
+  if(!Array.isArray(p)) return '---';
+  const icons={dinheiro:'💵', cartao:'💳', pix:'📱'};
+  return p.map(x=>icons[x.type]||'').join(' ');
+}
+
+function printOrder(id){
+  const o=S.get('pp_orders',[]).find(x=>x.id===id);
+  const el=document.getElementById('print-section');
+  el.innerHTML=`<h2>PIZZARIA PATRÍCIO</h2><p>Pedido #${o.id}</p><p>Cliente: ${o.client}</p><p>Total: ${fmt(o.total)}</p><p>Pagamento: ${renderPayIcons(o.payment)}</p>`;
+  window.print();
+}
+
 function tables(el){
-  const ts=S.get('pp_tables',[]); const os=S.get('pp_orders',[]);
-  el.innerHTML=`<div class="mesas-grid">${ts.map(t=>{
-    const o=os.find(x=>x.tableId===t.id && x.status!=='done');
+  const ms=S.get('pp_tables',[]); const os=S.get('pp_orders',[]);
+  el.innerHTML=`<div class="mesas-grid">${ms.map(m=>{
+    const o=os.find(x=>x.tableId===m.id && x.status!=='done');
     return `<div class="mesa-card ${o?'occupied':'free'}" onclick="${o?`checkoutOrder(${o.id})`:`orderType='mesa';navigate('pdv')`}">
-      <div class="mesa-num">Mesa ${t.id}</div><div class="mesa-status">${o?'Ocupada':'Livre'}</div>
-      ${o?`<div style="font-size:11px;color:var(--red);margin-top:5px">${fmt(o.total)}</div>`:''}
+      <div class="mesa-num">Mesa ${m.id}</div><div class="mesa-status">${o?'Ocupada':'Livre'}</div>
     </div>`;
   }).join('')}</div>`;
 }
 
-// --- KITCHEN & DELIVERY ---
-function kitchen(el){
-  const os=S.get('pp_orders',[]).filter(o=>o.status==='pending');
-  el.innerHTML=`<div class="page-header"><h2>👨‍🍳 Cozinha</h2></div>
-  <div class="metric-grid">${os.map(o=>`
-    <div class="metric-card" style="flex-direction:column;align-items:flex-start">
-      <div style="font-weight:800">#${o.id} - ${o.client}</div>
-      <div style="font-size:12px;margin:10px 0">${o.items.map(i=>`• ${i.name} (${i.desc})`).join('<br>')}</div>
-      <button class="btn btn-xs btn-blue" onclick="advanceStatus(${o.id},'done')">Concluir</button>
-    </div>`).join('') || '<p>Nenhum pedido pendente</p>'}</div>`;
-}
-window.advanceStatus=(id, s)=>{
-  const os=S.get('pp_orders',[]); const o=os.find(x=>x.id===id);
-  o.status=s; S.set('pp_orders',os); navigate(currentPage);
-}
-function delivery(el){ el.innerHTML='<h2>🛵 Delivery</h2><p>Pedidos para entrega aparecem aqui.</p>'; }
-
-// --- FINANCEIRO ---
 function financeiro(el){
   const os=S.get('pp_orders',[]).filter(o=>o.status==='done');
   const total=os.reduce((s,o)=>s+o.total,0);
   const pays={dinheiro:0,cartao:0,pix:0};
-  os.forEach(o=>{ if(Array.isArray(o.payment)) o.payment.forEach(p=>{ if(pays[p.type]!==undefined) pays[p.type]+=p.val; }); });
+  os.forEach(o=>{ if(Array.isArray(o.payment)) o.payment.forEach(p=>{ if(pays[p.type]!==undefined) pays[p.type]+=p.value; }); });
   
   el.innerHTML=`<div class="page-header"><h2>💰 Financeiro</h2><button class="btn btn-blue btn-sm" onclick="printFin()">🖨️ Imprimir Relatório</button></div>
     <div class="metric-grid">
@@ -496,36 +506,25 @@ function financeiro(el){
       <div class="metric-card"><div class="metric-icon">💰</div><div><div class="metric-val">${fmt(pays.dinheiro)}</div><div class="metric-label">Dinheiro</div></div></div>
       <div class="metric-card"><div class="metric-icon">💳</div><div><div class="metric-val">${fmt(pays.cartao)}</div><div class="metric-label">Cartão</div></div></div>
       <div class="metric-card"><div class="metric-icon">📱</div><div><div class="metric-val">${fmt(pays.pix)}</div><div class="metric-label">Pix</div></div></div>
-    </div>
-    <div class="table-box" style="margin-top:20px">
-      <table><thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Data</th></tr></thead>
-      <tbody>${os.slice(-10).reverse().map(o=>`<tr><td>#${o.id}</td><td>${o.client}</td><td>${fmt(o.total)}</td><td>${o.date}</td></tr>`).join('')}</tbody></table>
     </div>`;
 }
 
-// --- MANAGEMENT ---
-function products(el){ el.innerHTML='<h2>🍕 Produtos</h2><p>Gerencie seu cardápio aqui.</p>'; }
-function clients(el){ el.innerHTML='<h2>👤 Clientes</h2><p>Cadastro de clientes.</p>'; }
-function settings(el){ el.innerHTML='<h2>⚙️ Configurações</h2><p>Ajustes do sistema.</p>'; }
-
-// --- PRINT ---
-function printOrder(id){
-  const o=S.get('pp_orders',[]).find(x=>x.id===id);
-  const pr=document.getElementById('print-section');
-  pr.innerHTML=`<h2 style="text-align:center">PIZZARIA PATRÍCIO</h2><p style="text-align:center">Pedido #${o.id}</p><hr>
-    <p>Cliente: ${o.client}</p><p>Data: ${o.date}</p><hr>
-    <table style="width:100%">${o.items.map(i=>`<tr><td>${i.name} (${i.desc})</td><td style="text-align:right">${fmt(i.price)}</td></tr>`).join('')}</table><hr>
-    <p style="text-align:right"><strong>TOTAL: ${fmt(o.total)}</strong></p>`;
-  window.print();
-}
 function printFin(){
   const os=S.get('pp_orders',[]).filter(o=>o.status==='done');
   const total=os.reduce((s,o)=>s+o.total,0);
-  const pr=document.getElementById('print-section');
-  pr.innerHTML=`<h2 style="text-align:center">RELATÓRIO FINANCEIRO</h2><p style="text-align:center">${now()}</p><hr>
-    <p>Total Geral: ${fmt(total)}</p><p>Pedidos: ${os.length}</p><hr><p style="text-align:center">Pizzaria Patrício</p>`;
+  const el=document.getElementById('print-section');
+  el.innerHTML=`<h2>RELATÓRIO FINANCEIRO</h2><p>Data: ${now()}</p><hr><p>Total: ${fmt(total)}</p><p>Pedidos: ${os.length}</p><hr><p>Pizzaria Patrício</p>`;
   window.print();
 }
+
+function kitchen(el){ el.innerHTML='<h2>Cozinha</h2>'; }
+function delivery(el){ el.innerHTML='<h2>Delivery</h2>'; }
+function products(el){ el.innerHTML='<h2>Produtos</h2>'; }
+function borders(el){ el.innerHTML='<h2>Bordas</h2>'; }
+function clients(el){ el.innerHTML='<h2>Clientes</h2>'; }
+function users(el){ el.innerHTML='<h2>Usuários</h2>'; }
+function settings(el){ el.innerHTML='<h2>Configurações</h2>'; }
+function account(el){ el.innerHTML='<h2>Conta</h2>'; }
 
 initData();
 </script>
