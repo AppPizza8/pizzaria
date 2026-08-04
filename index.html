@@ -198,8 +198,24 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .size-row .remove-size{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px;transition:.15s}
 .size-row .remove-size:hover{color:var(--red)}
 
-/* ===== DELIVERY CARDS ===== */
-.delivery-cards{display:flex;flex-direction:column;gap:10px}
+	/* ===== DELIVERY CARDS ===== */
+	.delivery-cards{display:flex;flex-direction:column;gap:10px}
+
+	/* ===== PRINT STYLES ===== */
+	@media print {
+	  body * { visibility: hidden; }
+	  #print-section, #print-section * { visibility: visible; }
+	  #print-section { position: absolute; left: 0; top: 0; width: 100%; color: #000 !important; background: #fff !important; padding: 10px; font-family: 'Courier New', Courier, monospace; display: block !important; }
+	  .no-print { display: none !important; }
+	}
+	#print-section { display: none; }
+	#print-section h2 { text-align: center; font-size: 18px; margin-bottom: 5px; }
+	#print-section p { font-size: 12px; margin: 2px 0; }
+	#print-section table { width: 100%; border-top: 1px dashed #000; border-bottom: 1px dashed #000; margin: 10px 0; border-collapse: collapse; }
+	#print-section th { font-size: 11px; text-align: left; background: none; color: #000; padding: 5px 0; border-bottom: 1px dashed #000; }
+	#print-section td { font-size: 11px; padding: 3px 0; border: none; color: #000; }
+	#print-section .total-row { font-size: 14px; font-weight: bold; text-align: right; margin-top: 10px; }
+	#print-section .footer { text-align: center; font-size: 10px; margin-top: 20px; border-top: 1px dashed #000; padding-top: 10px; }
 .delivery-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px}
 .delivery-card.delivered{opacity:.6}
 .delivery-card .dc-num{font-size:20px;font-weight:800;color:var(--red);min-width:36px}
@@ -289,9 +305,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
       </div>
       <div id="nav-items"></div>
     </nav>
-    <main id="main-content"></main>
+   	<div id="main-content"></div>
   </div>
 </div>
+<div id="print-section"></div>
 
 <script>
 // ============================================================
@@ -998,9 +1015,10 @@ function viewOrder(id){
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
     ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
     <div class="modal-footer">
-      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue" onclick="closeModal();addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
-      <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
-    </div>
+	      <button class="btn btn-blue" onclick="printOrder(${o.id})">🖨️ Imprimir Cupom</button>
+	      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue" onclick="closeModal();addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
+	      <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
+	    </div>
   </div>`);
 }
 
@@ -1817,6 +1835,7 @@ function checkoutTableOrder(id){
       <button class="pay-btn" onclick="setCheckoutPay('pix',this)">📱 Pix</button>
     </div>
     <div class="modal-footer">
+      <button class="btn btn-blue" onclick="printOrder(${id})">🖨️ Imprimir Comanda</button>
       <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-green" style="background:var(--green)" onclick="finishTableOrder(${id})">Confirmar Pagamento</button>
     </div>
@@ -1844,6 +1863,51 @@ function finishTableOrder(id){
   buildSidebar();
   alert('✅ Comanda fechada e mesa liberada!');
   navigate('tables');
+}
+
+function printOrder(id){
+  const o = S.get('pp_orders', []).find(x => x.id === id);
+  if(!o) return;
+  
+  const printEl = document.getElementById('print-section');
+  const tipoLabel = o.type === 'mesa' ? `Mesa ${o.tableId}` : o.type.charAt(0).toUpperCase() + o.type.slice(1);
+  
+  let itemsHtml = o.items.map(i => `
+    <tr>
+      <td style="width:10%">${i.qty}x</td>
+      <td style="width:60%">${i.name}<br><small>${i.size}${i.border && i.border !== 'Sem Borda' ? ' + ' + i.border : ''}</small></td>
+      <td style="width:30%; text-align:right">${fmt(i.price)}</td>
+    </tr>
+  `).join('');
+
+  printEl.innerHTML = `
+    <h2>PIZZARIA PATRÍCIO</h2>
+    <p style="text-align:center">Pedido #${o.id} - ${tipoLabel}</p>
+    <p>Data: ${o.createdAt}</p>
+    <p>Cliente: ${o.client}</p>
+    ${o.address ? `<p>Endereço: ${o.address}</p>` : ''}
+    ${o.obs ? `<p>Obs: ${o.obs}</p>` : ''}
+    <table>
+      <thead>
+        <tr>
+          <th>Qtd</th>
+          <th>Item</th>
+          <th style="text-align:right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsHtml}
+      </tbody>
+    </table>
+    <div class="total-row">TOTAL: ${fmt(o.total)}</div>
+    <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : o.payment.toUpperCase()}</p>
+    <div class="footer">
+      <p>Obrigado pela preferência!</p>
+      <p>Sistema Pizzaria Patrício</p>
+    </div>
+  `;
+  
+  window.print();
 }
 
 // ============================================================
