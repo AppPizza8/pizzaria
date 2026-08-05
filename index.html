@@ -598,6 +598,19 @@ function navigate(page){
 function nextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
 function fmt(v){return 'R$ '+Number(v||0).toFixed(2).replace('.',',');}
 function now(){return new Date().toLocaleString('pt-BR');}
+
+function toggleChangeCalc(typeId, calcId) {
+  const type = document.getElementById(typeId).value;
+  const el = document.getElementById(calcId);
+  if(el) el.style.display = type === 'dinheiro' ? 'block' : 'none';
+}
+
+function updateChange(receivedId, valueId, displayId) {
+  const rec = parseFloat(document.getElementById(receivedId).value) || 0;
+  const val = parseFloat(document.getElementById(valueId).value) || 0;
+  const change = Math.max(0, rec - val);
+  document.getElementById(displayId).textContent = fmt(change);
+}
 function today(){return new Date().toLocaleDateString('pt-BR');}
 
 function statusBadge(s){
@@ -780,13 +793,19 @@ function pdv(el){
           <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">PAGAMENTO</p>
           <div id="multi-pay-list" style="margin-bottom:10px"></div>
           <div class="form-cols" style="grid-template-columns: 1fr 100px 40px; gap: 5px; margin-bottom:10px">
-            <select id="add-pay-type" style="padding:6px; font-size:12px">
+            <select id="add-pay-type" style="padding:6px; font-size:12px" onchange="toggleChangeCalc('add-pay-type', 'pdv-change-calc')">
               <option value="dinheiro">💵 Dinheiro</option>
               <option value="cartao">💳 Cartão</option>
               <option value="pix">📱 Pix</option>
             </select>
             <input id="add-pay-val" type="number" step="0.01" placeholder="Valor" style="padding:6px; font-size:12px">
             <button class="btn btn-green btn-xs" onclick="addPaymentRow()" style="justify-content:center">+</button>
+          </div>
+          <div id="pdv-change-calc" style="margin-bottom:10px; font-size:12px; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid var(--border)">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <span>Recebido: <input id="pdv-received" type="number" step="0.01" style="width:70px; padding:4px; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px" oninput="updateChange('pdv-received', 'add-pay-val', 'pdv-change-val')"></span>
+              <span>Troco: <strong id="pdv-change-val" style="color:var(--green)">R$ 0,00</strong></span>
+            </div>
           </div>
           <div id="pay-remain" style="font-size:12px; color:var(--orange); margin-bottom:10px; text-align:right">Restante: R$ 0,00</div>
         </div>
@@ -806,6 +825,13 @@ function addPaymentRow(containerId = 'multi-pay-list', valId = 'add-pay-val', ty
   
   targetList.push({type, value: val});
   document.getElementById(valId).value = '';
+  if(containerId === 'multi-pay-list') {
+    if(document.getElementById('pdv-received')) document.getElementById('pdv-received').value = '';
+    if(document.getElementById('pdv-change-val')) document.getElementById('pdv-change-val').textContent = fmt(0);
+  } else {
+    if(document.getElementById('chk-received')) document.getElementById('chk-received').value = '';
+    if(document.getElementById('chk-change-val')) document.getElementById('chk-change-val').textContent = fmt(0);
+  }
   renderMultiPayments(containerId, remainId, targetList, totalToCover);
 }
 
@@ -2001,13 +2027,19 @@ function checkoutOrder(id){
     <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">PAGAMENTO</p>
     <div id="checkout-pay-list" style="margin-bottom:10px"></div>
     <div class="form-cols" style="grid-template-columns: 1fr 100px 40px; gap: 5px; margin-bottom:10px">
-      <select id="chk-pay-type" style="padding:6px; font-size:12px">
+      <select id="chk-pay-type" style="padding:6px; font-size:12px" onchange="toggleChangeCalc('chk-pay-type', 'chk-change-calc')">
         <option value="dinheiro">💵 Dinheiro</option>
         <option value="cartao">💳 Cartão</option>
         <option value="pix">📱 Pix</option>
       </select>
       <input id="chk-pay-val" type="number" step="0.01" placeholder="Valor" style="padding:6px; font-size:12px">
       <button class="btn btn-green btn-xs" onclick="addPaymentRow('checkout-pay-list', 'chk-pay-val', 'chk-pay-type', 'chk-pay-remain', checkoutPayments, ${o.total})" style="justify-content:center">+</button>
+    </div>
+    <div id="chk-change-calc" style="margin-bottom:10px; font-size:12px; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid var(--border)">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <span>Recebido: <input id="chk-received" type="number" step="0.01" style="width:70px; padding:4px; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px" oninput="updateChange('chk-received', 'chk-pay-val', 'chk-change-val')"></span>
+        <span>Troco: <strong id="chk-change-val" style="color:var(--green)">R$ 0,00</strong></span>
+      </div>
     </div>
     <div id="chk-pay-remain" style="font-size:12px; color:var(--orange); margin-bottom:10px; text-align:right">Restante: ${fmt(o.total)}</div>
 
