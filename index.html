@@ -418,14 +418,24 @@ function initData(){
       serviceFee: 0
     });
   }
-  if(!S.get('pp_borders',null)){
-    S.set('pp_borders',[
-      {id:1,name:'Sem Borda',price:0},
-      {id:2,name:'Catupiry',price:5.00},
-      {id:3,name:'Cheddar',price:5.00},
-      {id:4,name:'Chocolate',price:6.00},
-      {id:5,name:'Brigadeiro',price:6.00},
-    ]);
+  const defaultBorders=[
+    {id:1,name:'Sem Borda',price:0},
+    {id:2,name:'Catupiry',price:6.00},
+    {id:3,name:'Cheddar',price:6.00},
+    {id:4,name:'Chocolate',price:8.00},
+    {id:5,name:'Brigadeiro',price:8.00},
+  ];
+  const savedBorders=S.get('pp_borders',null);
+  if(!savedBorders){
+    S.set('pp_borders',defaultBorders);
+  }else{
+    const normalizedBorders=savedBorders.map(b=>{
+      const name=(b.name||'').trim().toLowerCase();
+      if(['catupiry','cheddar'].includes(name)) return {...b,price:6.00};
+      if(['chocolate','brigadeiro'].includes(name)) return {...b,price:8.00};
+      return b;
+    });
+    S.set('pp_borders',normalizedBorders);
   }
   const newProducts = [
     // TRADICIONAIS
