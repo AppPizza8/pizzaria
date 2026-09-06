@@ -598,18 +598,60 @@ function navigate(page){
 function nextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
 function fmt(v){return 'R$ '+Number(v||0).toFixed(2).replace('.',',');}
 function now(){return new Date().toLocaleString('pt-BR');}
-
+function isPizzaProduct(p){
+  return !!p && (p.category==='Pizza'||['Tradicionais','Clássicas','Especiais'].includes(p.category));
+}
+function getProductSize(p, sizeName){
+  return p?.sizes?.find(s=>s.name===sizeName)||p?.sizes?.[0]||{name:sizeName||'-',price:0};
+}
+function itemDisplayName(item){
+  if(item?.isHalfHalf){
+    const first=item.flavors?.[0]?.name||item.name||'Sabor 1';
+    const second=item.flavors?.[1]?.name||item.halfFlavorName||'Sabor 2';
+    return `½ ${first} + ½ ${second}`;
+  }
+  return item?.name||'Item';
+}
+function paymentContext(receivedId){
+  const checkout=receivedId==='chk-received';
+  const list=checkout?checkoutPayments:multiPayments;
+  const total=checkout?checkoutTotal:cart.reduce((s,c)=>s+c.price,0);
+  const paid=list.reduce((s,p)=>s+(Number(p.value)||0),0);
+  return {total,paid,remaining:Math.max(0,total-paid)};
+}
 function toggleChangeCalc(typeId, calcId) {
-  const type = document.getElementById(typeId).value;
+  const type = document.getElementById(typeId)?.value;
   const el = document.getElementById(calcId);
   if(el) el.style.display = type === 'dinheiro' ? 'block' : 'none';
+  const checkout=typeId==='chk-pay-type';
+  const receivedId=checkout?'chk-received':'pdv-received';
+  const valueId=checkout?'chk-pay-val':'add-pay-val';
+  const displayId=checkout?'chk-change-val':'pdv-change-val';
+  if(type==='dinheiro') updateChange(receivedId,valueId,displayId);
+  else {
+    const receivedEl=document.getElementById(receivedId);
+    const displayEl=document.getElementById(displayId);
+    if(receivedEl) receivedEl.value='';
+    if(displayEl) displayEl.textContent=fmt(0);
+  }
 }
-
 function updateChange(receivedId, valueId, displayId) {
-  const rec = parseFloat(document.getElementById(receivedId).value) || 0;
-  const val = parseFloat(document.getElementById(valueId).value) || 0;
-  const change = Math.max(0, rec - val);
-  document.getElementById(displayId).textContent = fmt(change);
+  const receivedEl=document.getElementById(receivedId);
+  const valueEl=document.getElementById(valueId);
+  const displayEl=document.getElementById(displayId);
+  if(!receivedEl||!valueEl||!displayEl)return;
+  const rec = parseFloat(receivedEl.value) || 0;
+  let val = parseFloat(valueEl.value) || 0;
+  const ctx=paymentContext(receivedId);
+  if(rec>0 && val<=0){
+    val=ctx.remaining;
+    if(ctx.remaining>0) valueEl.value=val.toFixed(2);
+  }
+  const payable=ctx.remaining>0?Math.min(val,ctx.remaining):0;
+  const change=ctx.remaining>0?Math.max(0,rec-payable):0;
+  displayEl.textContent = fmt(change);
+  if(receivedId==='chk-received') window.currentCheckoutChange=change;
+  else window.currentPdvChange=change;
 }
 function today(){return new Date().toLocaleDateString('pt-BR');}
 
@@ -664,7 +706,7 @@ function dashboard(el){
 
   // Top products
   const itemCounts={};
-  orders.forEach(o=>o.items?.forEach(i=>{itemCounts[i.name]=(itemCounts[i.name]||0)+i.qty;}));
+  orders.forEach(o=>o.items?.forEach(i=>{const label=itemDisplayName(i);itemCounts[label]=(itemCounts[label]||0)+i.qty;}));
   const topItems=Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxCount=topItems[0]?.[1]||1;
 
@@ -743,6 +785,11 @@ function dashboard(el){
 let cart=[];
 let orderType='delivery';
 let multiPayments = [];
+let checkoutTotal = 0;
+let activeProductOptionId = null;
+let activeAddProductOptionId = null;
+let poHalfHalf = false;
+let apHalfHalf = false;
 
 function pdv(el){
   cart=[];
@@ -798,12 +845,12 @@ function pdv(el){
               <option value="cartao">💳 Cartão</option>
               <option value="pix">📱 Pix</option>
             </select>
-            <input id="add-pay-val" type="number" step="0.01" placeholder="Valor" style="padding:6px; font-size:12px">
+            <input id="add-pay-val" type="number" step="0.01" min="0" placeholder="Valor" style="padding:6px; font-size:12px" oninput="syncPaymentAmount('pdv')">
             <button class="btn btn-green btn-xs" onclick="addPaymentRow()" style="justify-content:center">+</button>
           </div>
           <div id="pdv-change-calc" style="margin-bottom:10px; font-size:12px; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid var(--border)">
             <div style="display:flex; justify-content:space-between; align-items:center">
-              <span>Recebido: <input id="pdv-received" type="number" step="0.01" style="width:70px; padding:4px; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px" oninput="updateChange('pdv-received', 'add-pay-val', 'pdv-change-val')"></span>
+              <span>Recebido: <input id="pdv-received" type="number" step="0.01" min="0" placeholder="0,00" style="width:78px; padding:4px; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px" oninput="updateChange('pdv-received', 'add-pay-val', 'pdv-change-val')"></span>
               <span>Troco: <strong id="pdv-change-val" style="color:var(--green)">R$ 0,00</strong></span>
             </div>
           </div>
@@ -818,12 +865,30 @@ function pdv(el){
   if(orderType==='mesa') document.getElementById('pdv-payment-area').style.display='none';
 }
 
+function syncPaymentAmount(prefix){
+  const typeId=prefix==='pdv'?'add-pay-type':'chk-pay-type';
+  const valId=prefix==='pdv'?'add-pay-val':'chk-pay-val';
+  const receivedId=prefix==='pdv'?'pdv-received':'chk-received';
+  const displayId=prefix==='pdv'?'pdv-change-val':'chk-change-val';
+  const type=document.getElementById(typeId)?.value;
+  const valueEl=document.getElementById(valId);
+  const receivedEl=document.getElementById(receivedId);
+  if(!valueEl||!receivedEl)return;
+  if(type==='dinheiro'&&valueEl.value&&!receivedEl.value) receivedEl.value=valueEl.value;
+  updateChange(receivedId,valId,displayId);
+}
 function addPaymentRow(containerId = 'multi-pay-list', valId = 'add-pay-val', typeId = 'add-pay-type', remainId = 'pay-remain', targetList = multiPayments, totalToCover = null) {
   const type = document.getElementById(typeId).value;
   const val = parseFloat(document.getElementById(valId).value) || 0;
   if(val <= 0) return;
-  
-  targetList.push({type, value: val});
+  const receivedId=containerId==='multi-pay-list'?'pdv-received':'chk-received';
+  const received=type==='dinheiro'?(parseFloat(document.getElementById(receivedId)?.value)||val):val;
+  const currentPaid=targetList.reduce((s,p)=>s+(Number(p.value)||0),0);
+  const total=totalToCover!==null&&totalToCover!==undefined?totalToCover:(containerId==='checkout-pay-list'?checkoutTotal:cart.reduce((s,c)=>s+c.price,0));
+  const remainingBefore=Math.max(0,total-currentPaid);
+  const appliedValue=Math.min(val,remainingBefore);
+  if(appliedValue<=0)return;
+  targetList.push({type, value: appliedValue, received, change:type==='dinheiro'?Math.max(0,received-appliedValue):0});
   document.getElementById(valId).value = '';
   if(containerId === 'multi-pay-list') {
     if(document.getElementById('pdv-received')) document.getElementById('pdv-received').value = '';
@@ -837,7 +902,7 @@ function addPaymentRow(containerId = 'multi-pay-list', valId = 'add-pay-val', ty
 
 function renderMultiPayments(containerId, remainId, targetList, totalToCover) {
   const total = cart.reduce((s,c)=>s+c.price,0);
-  const toCover = totalToCover !== null ? totalToCover : total;
+  const toCover = totalToCover !== null ? totalToCover : (containerId==='checkout-pay-list'?checkoutTotal:total);
   const paid = targetList.reduce((s,p)=>s+p.value,0);
   const remain = Math.max(0, toCover - paid);
   
@@ -846,7 +911,7 @@ function renderMultiPayments(containerId, remainId, targetList, totalToCover) {
   el.innerHTML = targetList.map((p, i) => `
     <div style="display:flex; justify-content:space-between; font-size:12px; background:var(--card2); padding:5px 8px; border-radius:6px; margin-bottom:4px; border:1px solid var(--border)">
       <span>${icons[p.type]} ${p.type.toUpperCase()}</span>
-      <span><strong>${fmt(p.value)}</strong> <button onclick="removePaymentRow(${i}, '${containerId}', '${remainId}', ${JSON.stringify(targetList).replace(/"/g, '&quot;')}, ${toCover})" style="background:none; border:none; color:var(--red); cursor:pointer; margin-left:5px">✕</button></span>
+      <span><strong>${fmt(p.value)}</strong>${p.change>0?` <small style="color:var(--green)">· Troco ${fmt(p.change)}</small>`:''} <button onclick="removePaymentRow(${i}, '${containerId}', '${remainId}', '', ${toCover})" style="background:none; border:none; color:var(--red); cursor:pointer; margin-left:5px">✕</button></span>
     </div>
   `).join('');
   
@@ -892,23 +957,46 @@ function filterProducts(q){
 function openProductOptions(id){
   const p=S.get('pp_products',[]).find(x=>x.id===id);
   if(!p)return;
-  const isPizza=p.category==='Pizza';
+  const isPizza=isPizzaProduct(p);
   const borders=isPizza?S.get('pp_borders',[]):[];
+  const flavorProducts=S.get('pp_products',[]).filter(x=>x.active&&isPizzaProduct(x));
+  const defaultHalfId=flavorProducts.find(f=>f.id!==id)?.id||id;
+  activeProductOptionId=id;
+  poHalfHalf=false;
   openModal(`<div class="modal">
-    <h3>${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':'🥤'} ${p.name}</h3>
+    <h3>${isPizza?'🍕':p.category==='Salgado'?'🥐':'🥤'} ${p.name}</h3>
     ${p.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:16px">${p.description}</p>`:''}
+    ${isPizza?`<div class="form-row">
+      <label>Sabores da pizza</label>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="po-whole-btn" class="pay-btn active" onclick="setPizzaOptionMode('whole','po')" style="flex:1">🍕 Um sabor</button>
+        <button id="po-half-btn" class="pay-btn" onclick="setPizzaOptionMode('half','po')" style="flex:1">½ Meio a meio</button>
+      </div>
+      <div id="po-half-options" style="display:none;background:rgba(255,255,255,0.04);padding:8px;border:1px solid var(--border);border-radius:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <select id="po-half-flavor-1" onchange="updatePizzaOptionPreview('po')">
+            ${flavorProducts.map(f=>`<option value="${f.id}" ${f.id===id?'selected':''}>½ ${f.name}</option>`).join('')}
+          </select>
+          <select id="po-half-flavor-2" onchange="updatePizzaOptionPreview('po')">
+            ${flavorProducts.map(f=>`<option value="${f.id}" ${f.id===defaultHalfId?'selected':''}>½ ${f.name}</option>`).join('')}
+          </select>
+        </div>
+        <div id="po-half-price-note" style="font-size:11px;color:var(--muted);margin-top:7px">Escolha dois sabores diferentes. O preço será o do sabor mais caro.</div>
+      </div>
+    </div>`:''}
     <div class="form-row">
       <label>Tamanho</label>
-      <select id="po-size">
+      <select id="po-size" onchange="updatePizzaOptionPreview('po')">
         ${p.sizes.map(s=>`<option value="${s.price}" data-name="${s.name}">${s.name} — ${fmt(s.price)}</option>`).join('')}
       </select>
     </div>
     ${isPizza?`<div class="form-row">
       <label>Borda</label>
-      <select id="po-border">
+      <select id="po-border" onchange="updatePizzaOptionPreview('po')">
         ${borders.map(b=>`<option value="${b.price}" data-name="${b.name}">${b.name}${b.price>0?' + '+fmt(b.price):''}</option>`).join('')}
       </select>
     </div>`:''}
+    ${isPizza?`<div id="po-price-note" style="font-size:12px;color:var(--muted);margin:-4px 0 12px">Preço da pizza: ${fmt((p.sizes?.[0]?.price||0)+(borders?.[0]?.price||0))}</div>`:''}
     <div class="form-row">
       <label>Quantidade</label>
       <input id="po-qty" type="number" value="1" min="1">
@@ -922,8 +1010,47 @@ function openProductOptions(id){
       <button class="btn btn-red" onclick="addToCart(${id})">Adicionar ao Carrinho</button>
     </div>
   </div>`);
+  updatePizzaOptionPreview('po');
 }
 
+function setPizzaOptionMode(mode,prefix){
+  const half=mode==='half';
+  if(prefix==='po') poHalfHalf=half;
+  else apHalfHalf=half;
+  const wholeBtn=document.getElementById(`${prefix}-whole-btn`);
+  const halfBtn=document.getElementById(`${prefix}-half-btn`);
+  const options=document.getElementById(`${prefix}-half-options`);
+  if(wholeBtn) wholeBtn.classList.toggle('active',!half);
+  if(halfBtn) halfBtn.classList.toggle('active',half);
+  if(options) options.style.display=half?'block':'none';
+  updatePizzaOptionPreview(prefix);
+}
+function updatePizzaOptionPreview(prefix){
+  const isHalf=prefix==='po'?poHalfHalf:apHalfHalf;
+  const sizeEl=document.getElementById(`${prefix}-size`);
+  if(!sizeEl)return;
+  const borderEl=document.getElementById(`${prefix}-border`);
+  const borderPrice=borderEl?parseFloat(borderEl.value)||0:0;
+  const selectedSizeName=sizeEl.options[sizeEl.selectedIndex]?.dataset.name||'';
+  let basePrice=parseFloat(sizeEl.value)||0;
+  let note='';
+  if(isHalf){
+    const flavor1Id=parseInt(document.getElementById(`${prefix}-half-flavor-1`)?.value);
+    const flavor2Id=parseInt(document.getElementById(`${prefix}-half-flavor-2`)?.value);
+    const products=S.get('pp_products',[]);
+    const flavor1=products.find(x=>x.id===flavor1Id);
+    const flavor2=products.find(x=>x.id===flavor2Id);
+    const price1=getProductSize(flavor1,selectedSizeName).price;
+    const price2=getProductSize(flavor2,selectedSizeName).price;
+    basePrice=Math.max(price1,price2);
+    note=`Meio a meio: ${flavor1?.name||'Sabor 1'} + ${flavor2?.name||'Sabor 2'} · cobrado pelo maior: ${fmt(basePrice+borderPrice)}`;
+  } else {
+    note=`Preço da pizza: ${fmt(basePrice+borderPrice)}`;
+  }
+  const noteEl=document.getElementById(`${prefix}-price-note`);
+  if(noteEl) noteEl.textContent=note;
+  return {basePrice,borderPrice,sizeName:selectedSizeName};
+}
 function addToCart(id){
   const p=S.get('pp_products',[]).find(x=>x.id===id);
   if(!p)return;
@@ -933,10 +1060,22 @@ function addToCart(id){
   const borderEl=document.getElementById('po-border');
   const borderName=borderEl?borderEl.options[borderEl.selectedIndex]?.dataset.name:'';
   const borderPrice=borderEl?parseFloat(borderEl.value)||0:0;
-  const qty=parseInt(document.getElementById('po-qty').value)||1;
-  const obs=document.getElementById('po-obs').value;
-  const unitPrice=sizePrice+borderPrice;
-    cart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
+  const qty=Math.max(1,parseInt(document.getElementById('po-qty').value)||1);
+  const obs=document.getElementById('po-obs').value.trim();
+  let basePrice=sizePrice;
+  let flavors=null;
+  if(poHalfHalf&&isPizzaProduct(p)){
+    const flavor1Id=parseInt(document.getElementById('po-half-flavor-1')?.value);
+    const flavor2Id=parseInt(document.getElementById('po-half-flavor-2')?.value);
+    if(!flavor1Id||!flavor2Id||flavor1Id===flavor2Id){alert('Escolha dois sabores diferentes para a pizza meio a meio.');return;}
+    const products=S.get('pp_products',[]);
+    const flavor1=products.find(x=>x.id===flavor1Id);
+    const flavor2=products.find(x=>x.id===flavor2Id);
+    basePrice=Math.max(getProductSize(flavor1,sizeName).price,getProductSize(flavor2,sizeName).price);
+    flavors=[{id:flavor1.id,name:flavor1.name},{id:flavor2.id,name:flavor2.name}];
+  }
+  const unitPrice=basePrice+borderPrice;
+  cart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,basePrice,price:unitPrice*qty,obs,isHalfHalf:!!flavors,flavors});
   closeLastModal();
   renderCart();
 }
@@ -948,7 +1087,7 @@ function renderCart(){
   el.innerHTML=cart.map((c,i)=>`
     <div class="cart-item">
       <div class="cart-item-info">
-        <div class="cart-item-name">${c.qty}x ${c.name}</div>
+        <div class="cart-item-name">${c.qty}x ${itemDisplayName(c)}</div>
         <div class="cart-item-sub">${c.size}${c.border&&c.border!=='Sem Borda'?' · Borda '+c.border:''}${c.obs?' · '+c.obs:''}</div>
       </div>
       <div class="cart-item-price">${fmt(c.price)}</div>
@@ -965,6 +1104,8 @@ function updateCartTotal(){
   const tot=document.getElementById('cart-total-val');
   if(sub) sub.textContent=fmt(total);
   if(tot) tot.textContent=fmt(total);
+  if(document.getElementById('pdv-received')) updateChange('pdv-received','add-pay-val','pdv-change-val');
+  if(document.getElementById('pay-remain')) renderMultiPayments('multi-pay-list','pay-remain',multiPayments,null);
 }
 
 function setOrderType(type,btn){
@@ -1082,7 +1223,7 @@ function renderOrdersRows(list){
     <td>${o.client}</td>
     <td>${typeLabelFull(o)}</td>
     <td>${o.tableId?`<span class="badge badge-dine">Mesa ${o.tableId}</span>`:'-'}</td>
-    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items?.map(i=>`${i.qty}x ${i.name}`).join(', ')||'-'}</td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items?.map(i=>`${i.qty}x ${itemDisplayName(i)}`).join(', ')||'-'}</td>
     <td><strong>${fmt(o.total)}</strong></td>
     <td>${payDisp} ${!Array.isArray(o.payment)?(o.payment||'-'):''}</td>
     <td>${statusBadge(o.status)}</td>
@@ -1154,7 +1295,7 @@ function viewOrder(id){
     <table style="margin-bottom:16px">
       <thead><tr><th>Item</th><th>Tamanho</th><th>Borda</th><th>Qtd</th><th>Preço</th></tr></thead>
       <tbody>
-        ${o.items?.map(i=>`<tr><td>${i.name}</td><td>${i.size||'-'}</td><td>${i.border||'-'}</td><td>${i.qty}</td><td>${fmt(i.price)}</td></tr>`).join('')}
+        ${o.items?.map(i=>`<tr><td>${itemDisplayName(i)}</td><td>${i.size||'-'}</td><td>${i.border||'-'}</td><td>${i.qty}</td><td>${fmt(i.price)}</td></tr>`).join('')}
       </tbody>
     </table>
     <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid var(--border);padding-top:12px">
@@ -1206,7 +1347,7 @@ function kitchenCard(o,status){
   const typeBadge={delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||'';
   return `<div class="kitchen-card ${status==='pending'&&(new Date()-new Date(o.createdAt.split(', ').join(' ')))>600000?'urgent':''}">
     <h4><span>#${o.id} — ${o.client} ${typeBadge} ${mesaInfo}</span>${statusBadge(o.status)}</h4>
-    <div class="kc-items">${o.items?.map(i=>`• ${i.qty}x ${i.name} (${i.size||''}${i.border&&i.border!=='Sem Borda'?' | Borda '+i.border:''})`).join('<br>')||''}</div>
+    <div class="kc-items">${o.items?.map(i=>`• ${i.qty}x ${itemDisplayName(i)} (${i.size||''}${i.border&&i.border!=='Sem Borda'?' | Borda '+i.border:''})`).join('<br>')||''}</div>
     ${o.obs?`<div style="font-size:11px;color:var(--orange);margin-bottom:8px">📝 ${o.obs}</div>`:''}
     <div class="kc-time">⏱ ${o.createdAt}</div>
     <div style="display:flex;gap:6px;flex-direction:column">
@@ -1236,7 +1377,7 @@ function delivery(el){
         <div class="dc-info">
           <div class="dc-name">${o.client} — ${fmt(o.total)}</div>
           <div class="dc-addr">📍 ${o.address||'Sem endereço'}</div>
-          <div class="dc-items">${o.items?.map(i=>`${i.qty}x ${i.name}`).join(', ')}</div>
+          <div class="dc-items">${o.items?.map(i=>`${i.qty}x ${itemDisplayName(i)}`).join(', ')}</div>
         </div>
         <div style="text-align:right">
           ${statusBadge(o.status)}<br><br>
@@ -1910,23 +2051,46 @@ function filterAddCat(cat,btn){
 function openAddProductOptions(id){
   const p=S.get('pp_products',[]).find(x=>x.id===id);
   if(!p)return;
-  const isPizza=p.category==='Pizza';
+  const isPizza=isPizzaProduct(p);
   const borders=isPizza?S.get('pp_borders',[]):[];
+  const flavorProducts=S.get('pp_products',[]).filter(x=>x.active&&isPizzaProduct(x));
+  const defaultHalfId=flavorProducts.find(f=>f.id!==id)?.id||id;
+  activeAddProductOptionId=id;
+  apHalfHalf=false;
   openModal(`<div class="modal">
-    <h3>${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':'🥤'} ${p.name}</h3>
+    <h3>${isPizza?'🍕':p.category==='Salgado'?'🥐':'🥤'} ${p.name}</h3>
     ${p.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:16px">${p.description}</p>`:''}
+    ${isPizza?`<div class="form-row">
+      <label>Sabores da pizza</label>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="ap-whole-btn" class="pay-btn active" onclick="setPizzaOptionMode('whole','ap')" style="flex:1">🍕 Um sabor</button>
+        <button id="ap-half-btn" class="pay-btn" onclick="setPizzaOptionMode('half','ap')" style="flex:1">½ Meio a meio</button>
+      </div>
+      <div id="ap-half-options" style="display:none;background:rgba(255,255,255,0.04);padding:8px;border:1px solid var(--border);border-radius:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <select id="ap-half-flavor-1" onchange="updatePizzaOptionPreview('ap')">
+            ${flavorProducts.map(f=>`<option value="${f.id}" ${f.id===id?'selected':''}>½ ${f.name}</option>`).join('')}
+          </select>
+          <select id="ap-half-flavor-2" onchange="updatePizzaOptionPreview('ap')">
+            ${flavorProducts.map(f=>`<option value="${f.id}" ${f.id===defaultHalfId?'selected':''}>½ ${f.name}</option>`).join('')}
+          </select>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:7px">Escolha dois sabores diferentes. O preço será o do sabor mais caro.</div>
+      </div>
+    </div>`:''}
     <div class="form-row">
       <label>Tamanho</label>
-      <select id="ap-size">
+      <select id="ap-size" onchange="updatePizzaOptionPreview('ap')">
         ${p.sizes.map(s=>`<option value="${s.price}" data-name="${s.name}">${s.name} — ${fmt(s.price)}</option>`).join('')}
       </select>
     </div>
     ${isPizza?`<div class="form-row">
       <label>Borda</label>
-      <select id="ap-border">
+      <select id="ap-border" onchange="updatePizzaOptionPreview('ap')">
         ${borders.map(b=>`<option value="${b.price}" data-name="${b.name}">${b.name}${b.price>0?' + '+fmt(b.price):''}</option>`).join('')}
       </select>
     </div>`:''}
+    ${isPizza?`<div id="ap-price-note" style="font-size:12px;color:var(--muted);margin:-4px 0 12px">Preço da pizza: ${fmt((p.sizes?.[0]?.price||0)+(borders?.[0]?.price||0))}</div>`:''}
     <div class="form-row">
       <label>Quantidade</label>
       <input id="ap-qty" type="number" value="1" min="1">
@@ -1940,6 +2104,7 @@ function openAddProductOptions(id){
       <button class="btn btn-red" onclick="addItemToCart(${id})">Adicionar</button>
     </div>
   </div>`);
+  updatePizzaOptionPreview('ap');
 }
 
 function addItemToCart(id){
@@ -1951,10 +2116,22 @@ function addItemToCart(id){
   const borderEl=document.getElementById('ap-border');
   const borderName=borderEl?borderEl.options[borderEl.selectedIndex]?.dataset.name:'';
   const borderPrice=borderEl?parseFloat(borderEl.value)||0:0;
-  const qty=parseInt(document.getElementById('ap-qty').value)||1;
-  const obs=document.getElementById('ap-obs').value;
-  const unitPrice=sizePrice+borderPrice;
-  addItemsCart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,price:unitPrice*qty,obs});
+  const qty=Math.max(1,parseInt(document.getElementById('ap-qty').value)||1);
+  const obs=document.getElementById('ap-obs').value.trim();
+  let basePrice=sizePrice;
+  let flavors=null;
+  if(apHalfHalf&&isPizzaProduct(p)){
+    const flavor1Id=parseInt(document.getElementById('ap-half-flavor-1')?.value);
+    const flavor2Id=parseInt(document.getElementById('ap-half-flavor-2')?.value);
+    if(!flavor1Id||!flavor2Id||flavor1Id===flavor2Id){alert('Escolha dois sabores diferentes para a pizza meio a meio.');return;}
+    const products=S.get('pp_products',[]);
+    const flavor1=products.find(x=>x.id===flavor1Id);
+    const flavor2=products.find(x=>x.id===flavor2Id);
+    basePrice=Math.max(getProductSize(flavor1,sizeName).price,getProductSize(flavor2,sizeName).price);
+    flavors=[{id:flavor1.id,name:flavor1.name},{id:flavor2.id,name:flavor2.name}];
+  }
+  const unitPrice=basePrice+borderPrice;
+  addItemsCart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,basePrice,price:unitPrice*qty,obs,isHalfHalf:!!flavors,flavors});
   closeLastModal();
   renderAddCart();
 }
@@ -1967,7 +2144,7 @@ function renderAddCart(){
   el.innerHTML=addItemsCart.map((c,i)=>`
     <div class="cart-item" style="padding:8px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600">${c.qty}x ${c.name}</div>
+        <div style="font-size:12px;font-weight:600">${c.qty}x ${itemDisplayName(c)}</div>
         <div style="font-size:10px;color:var(--muted)">${c.size}${c.border&&c.border!=='Sem Borda'?' · Borda '+c.border:''}${c.obs?' · '+c.obs:''}</div>
       </div>
       <div style="font-size:12px;font-weight:700;color:var(--red)">${fmt(c.price)}</div>
@@ -2014,6 +2191,7 @@ let checkoutPayments = [];
 function checkoutOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
+  checkoutTotal=o.total||0;
   checkoutPayments = Array.isArray(o.payment) ? [...o.payment] : [];
   const title = o.type === 'mesa' ? `Fechar Comanda — Mesa ${o.tableId}` : `Concluir Pedido #${o.id}`;
   openModal(`<div class="modal">
@@ -2032,13 +2210,13 @@ function checkoutOrder(id){
         <option value="cartao">💳 Cartão</option>
         <option value="pix">📱 Pix</option>
       </select>
-      <input id="chk-pay-val" type="number" step="0.01" placeholder="Valor" style="padding:6px; font-size:12px">
+      <input id="chk-pay-val" type="number" step="0.01" min="0" placeholder="Valor" style="padding:6px; font-size:12px" oninput="syncPaymentAmount('checkout')">
       <button class="btn btn-green btn-xs" onclick="addPaymentRow('checkout-pay-list', 'chk-pay-val', 'chk-pay-type', 'chk-pay-remain', checkoutPayments, ${o.total})" style="justify-content:center">+</button>
     </div>
     <div id="chk-change-calc" style="margin-bottom:10px; font-size:12px; background:rgba(255,255,255,0.05); padding:8px; border-radius:6px; border:1px solid var(--border)">
       <div style="display:flex; justify-content:space-between; align-items:center">
-        <span>Recebido: <input id="chk-received" type="number" step="0.01" style="width:70px; padding:4px; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px" oninput="updateChange('chk-received', 'chk-pay-val', 'chk-change-val')"></span>
-        <span>Troco: <strong id="chk-change-val" style="color:var(--green)">R$ 0,00</strong></span>
+<span>Recebido: <input id="chk-received" type="number" step="0.01" min="0" placeholder="0,00" style="width:78px; padding:4px; background:#000; border:1px solid var(--border); color:#fff; border-radius:4px" oninput="updateChange('chk-received', 'chk-pay-val', 'chk-change-val')"></span>
+      <span>Troco: <strong id="chk-change-val" style="color:var(--green)">R$ 0,00</strong></span>
       </div>
     </div>
     <div id="chk-pay-remain" style="font-size:12px; color:var(--orange); margin-bottom:10px; text-align:right">Restante: ${fmt(o.total)}</div>
@@ -2049,6 +2227,8 @@ function checkoutOrder(id){
       <button class="btn btn-green" style="background:var(--green)" onclick="finishTableOrder(${id})">Confirmar Pagamento</button>
     </div>
   </div>`);
+  renderMultiPayments('checkout-pay-list','chk-pay-remain',checkoutPayments,o.total);
+  toggleChangeCalc('chk-pay-type','chk-change-calc');
 }
 
 function finishTableOrder(id){
@@ -2070,6 +2250,7 @@ function finishTableOrder(id){
   }
   
   S.set('pp_orders', orders);
+  checkoutTotal=0;
   closeModal();
   buildSidebar();
   alert('✅ Pedido concluído com sucesso!');
@@ -2086,7 +2267,7 @@ function printOrder(id){
   let itemsHtml = o.items.map(i => `
     <tr>
       <td style="width:10%">${i.qty}x</td>
-      <td style="width:60%">${i.name}<br><small>${i.size}${i.border && i.border !== 'Sem Borda' ? ' + ' + i.border : ''}</small></td>
+      <td style="width:60%">${itemDisplayName(i)}<br><small>${i.size}${i.border && i.border !== 'Sem Borda' ? ' + ' + i.border : ''}</small></td>
       <td style="width:30%; text-align:right">${fmt(i.price)}</td>
     </tr>
   `).join('');
@@ -2116,7 +2297,7 @@ function printOrder(id){
       </tbody>
     </table>
     <div class="total-row">TOTAL: ${fmt(o.total)}</div>
-    <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : (Array.isArray(o.payment) ? o.payment.map(p => `${p.type.toUpperCase()}: ${fmt(p.value)}`).join(' | ') : o.payment.toUpperCase())}</p>
+    <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : (Array.isArray(o.payment) ? o.payment.map(p => `${p.type.toUpperCase()}: ${fmt(p.value)}${p.change>0?' (Troco: '+fmt(p.change)+')':''}`).join(' | ') : o.payment.toUpperCase())}</p>
     <div class="footer">
       <p>Obrigado pela preferência!</p>
       <p>Sistema Pizzaria Patrício</p>
