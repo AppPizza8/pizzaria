@@ -258,6 +258,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .orders-table td:nth-child(10){white-space:nowrap;overflow:hidden}
 .orders-table .row-actions{gap:4px;flex-wrap:nowrap}
 .orders-table .row-actions .btn-xs{padding:3px 6px;font-size:10px;gap:3px}
+.finance-shell{max-width:1400px}
+.finance-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px}
+.finance-section h3{font-size:15px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.finance-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.finance-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.finance-mini{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px}
+.finance-mini .finance-mini-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.finance-mini .finance-mini-value{font-size:18px;font-weight:700}
+.finance-progress{height:8px;background:#0d1117;border-radius:10px;overflow:hidden;margin:8px 0 6px}
+.finance-progress>span{display:block;height:100%;background:var(--green);border-radius:10px;transition:width .2s}
+.finance-tag{display:inline-flex;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;background:rgba(31,111,235,.15);color:#58a6ff}
+.finance-scroll{overflow-x:auto}
+.finance-scroll table{min-width:640px}
+.finance-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.finance-muted{font-size:12px;color:var(--muted)}
+@media(max-width:900px){.finance-grid-2,.finance-grid-3{grid-template-columns:1fr}.finance-shell{max-width:100%}.finance-section{padding:14px}.finance-scroll table{min-width:600px}}
 
 @media(max-width:900px){
   .chart-row{grid-template-columns:1fr}
@@ -344,7 +360,7 @@ const S = {
 // FIREBASE SYNC — opcional. Ativa para multi-dispositivo
 // ============================================================
 let firebaseDb=null,useFirebase=false,lastSyncAt=0;
-const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2'];
+const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings'];
 
 function setupFirebase(config){
   try{
@@ -408,9 +424,14 @@ function initData(){
     {id:4,username:'cozinha',   password:'pizza123',name:'Cozinha',        role:'cozinha',    active:true},
     {id:5,username:'entregador',password:'pizza123',name:'Entregador',     role:'entregador', active:true},
   ];
-  if(!S.get('pp_users',null)){
+  const savedUsers=S.get('pp_users',null);
+  if(!savedUsers){
     S.set('pp_users',defaultUsers);
-  } else if(!S.get('pp_v2',null)){
+  }else{
+    const defaultUsernames=['admin','gerente','caixa','cozinha','entregador'];
+    S.set('pp_users',savedUsers.map(u=>defaultUsernames.includes(u.username)&&u.password==='271822'?{...u,password:'pizza123'}:u));
+  }
+  if(!S.get('pp_v2',null)){
     // migração: garante que todos os usuários padrão existem
     const users=S.get('pp_users',[]);
     defaultUsers.forEach(du=>{
@@ -434,6 +455,35 @@ function initData(){
       serviceFee: 0
     });
   }
+  if(!S.get('pp_finance_settings',null)) S.set('pp_finance_settings',{
+    financePassword:'271822',capitalGoal:4000,goodsDaily:166.67,cheeseDaily:230,operatingDaysPerWeek:4,
+    reserveTargets:[
+      {name:'Mercadoria',daily:166.67,category:'mercadoria'},
+      {name:'Queijo',daily:230,category:'queijo'},
+      {name:'Funcionários',daily:55,category:'funcionarios'},
+      {name:'Aluguel',daily:18.75,category:'aluguel'},
+      {name:'Energia',daily:10,category:'energia'},
+      {name:'Internet',daily:3.34,category:'internet'},
+      {name:'Salário',daily:125,category:'salario'},
+      {name:'Cartão',daily:70,category:'cartao'},
+      {name:'Moto',daily:104.17,category:'moto'},
+      {name:'Dívida',daily:41.67,category:'divida'}
+    ]
+  });
+  if(!S.get('pp_finance_movements',null)) S.set('pp_finance_movements',[]);
+  if(!S.get('pp_finance_accounts',null)) S.set('pp_finance_accounts',[
+    {id:1,name:'Funcionários',goal:1300,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:2,name:'Aluguel',goal:450,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:3,name:'Energia',goal:240,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:4,name:'Internet',goal:100,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:5,name:'Salário',goal:3000,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:6,name:'Cartão',goal:2100,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:7,name:'Moto',goal:2500,accumulated:0,dueDate:'',days:30,status:'open'},
+    {id:8,name:'Dívida',goal:1250,accumulated:0,dueDate:'',days:30,status:'open'}
+  ]);
+  if(!S.get('pp_finance_purchases',null)) S.set('pp_finance_purchases',[]);
+  if(!S.get('pp_finance_reserves',null)) S.set('pp_finance_reserves',[]);
+  if(!S.get('pp_finance_closings',null)) S.set('pp_finance_closings',[]);
   const defaultBorders=[
     {id:1,name:'Sem Borda',price:0},
     {id:2,name:'Catupiry',price:6.00},
@@ -604,6 +654,7 @@ let currentPage='';
 const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',settings:'Configurações',account:'Minha Conta'};
 
 let editingOrderId=null;
+let financeUnlockedSession=false;
 
 function navigate(page){
   if(page==='pdv'&&editingOrderId){}
@@ -1774,63 +1825,64 @@ function toggleUser(id){
 // ============================================================
 // FINANCEIRO
 // ============================================================
-function financeiro(el){
-  const orders=S.get('pp_orders',[]).filter(o=>o.status==='done');
-  const total=orders.reduce((s,o)=>s+(o.total||0),0);
-  const byPayment={dinheiro:0,cartao:0,pix:0};
-  orders.forEach(o=>{
-    if(Array.isArray(o.payment)){
-      o.payment.forEach(p=>{ if(byPayment[p.type]!==undefined) byPayment[p.type]+=p.value; });
-    } else if(byPayment[o.payment]!==undefined) {
-      byPayment[o.payment]+=o.total||0;
-    }
-  });
-  const cost=total*0.45;const profit=total-cost;
-
-  // Last 30 orders
-  const recent=[...orders].reverse().slice(0,30);
-
-  el.innerHTML=`
-  <div class="page-header" style="margin-bottom:16px"><h2>💰 Financeiro</h2><button class="btn btn-blue btn-sm" onclick="printFinanceiro()">🖨️ Imprimir Relatório</button></div>
-  <div class="metric-grid" style="margin-bottom:20px">
-    <div class="metric-card"><div class="metric-icon" style="background:rgba(31,111,235,.15)">💵</div>
-      <div><div class="metric-val">${fmt(total)}</div><div class="metric-label">Faturamento Total</div></div></div>
-    <div class="metric-card"><div class="metric-icon" style="background:rgba(230,57,70,.15)">📉</div>
-      <div><div class="metric-val">${fmt(cost)}</div><div class="metric-label">Custo Estimado (45%)</div></div></div>
-    <div class="metric-card"><div class="metric-icon" style="background:rgba(46,160,67,.15)">📈</div>
-      <div><div class="metric-val">${fmt(profit)}</div><div class="metric-label">Lucro Estimado</div></div></div>
-  </div>
-  <div class="chart-row" style="margin-bottom:20px">
-    <div class="chart-box">
-      <h3>Formas de Pagamento</h3>
-      <canvas id="pay-chart" height="160"></canvas>
-    </div>
-    <div class="chart-box">
-      <h3>Resumo</h3>
-      <table>
-        <tr><td>💵 Dinheiro</td><td style="text-align:right;font-weight:700">${fmt(byPayment.dinheiro)}</td></tr>
-        <tr><td>💳 Cartão</td><td style="text-align:right;font-weight:700">${fmt(byPayment.cartao)}</td></tr>
-        <tr><td>📱 Pix</td><td style="text-align:right;font-weight:700">${fmt(byPayment.pix)}</td></tr>
-        <tr style="border-top:2px solid var(--border)"><td><strong>Total</strong></td><td style="text-align:right;font-weight:700;color:var(--red)">${fmt(total)}</td></tr>
-      </table>
-    </div>
-  </div>
-  <div class="table-box">
-    <table><thead><tr><th>#</th><th>Cliente</th><th>Total</th><th>Pagamento</th><th>Data</th></tr></thead>
-    <tbody>
-      ${recent.map(o=>{
-        const payDisp = Array.isArray(o.payment) ? o.payment.map(p=>`${{dinheiro:'💵',cartao:'💳',pix:'📱'}[p.type]||''}${fmt(p.value)}`).join(' ') : ({dinheiro:'💵 Dinheiro',cartao:'💳 Cartão',pix:'📱 Pix'}[o.payment]||o.payment);
-        return `<tr><td>#${o.id}</td><td>${o.client}</td><td><strong>${fmt(o.total)}</strong></td><td><span style="font-size:11px">${payDisp}</span></td><td style="font-size:12px;color:var(--muted)">${o.createdAt}</td></tr>`
-      }).join('') ||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Nenhuma venda registrada</td></tr>'}
-    </tbody></table>
-  </div>`;
-
-  setTimeout(()=>{
-    const ctx=document.getElementById('pay-chart')?.getContext('2d');
-    if(!ctx)return;
-    new Chart(ctx,{type:'doughnut',data:{labels:['Dinheiro','Cartão','Pix'],datasets:[{data:[byPayment.dinheiro,byPayment.cartao,byPayment.pix],backgroundColor:['#f0c000','#1f6feb','#27ae60'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#e6edf3'}}}}});
-  },50);
+function finDateKey(value){
+  if(!value)return new Date().toISOString().slice(0,10);
+  const s=String(value);
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.slice(0,10);
+  const m=s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m?`${m[3]}-${m[2]}-${m[1]}`:new Date(value).toISOString().slice(0,10);
 }
+function finToday(){return new Date().toISOString().slice(0,10)}
+function finLabelDate(value){if(!value)return '-';const p=finDateKey(value).split('-');return `${p[2]}/${p[1]}/${p[0]}`}
+function finNum(id){return parseFloat(document.getElementById(id)?.value)||0}
+function finMovementLabel(c){return ({venda:'Venda',mercadoria:'Mercadoria',queijo:'Queijo',funcionarios:'Funcionários',aluguel:'Aluguel',energia:'Energia',internet:'Internet',salario:'Salário',cartao:'Cartão',moto:'Moto',divida:'Dívida',retirada:'Retirada pessoal',capital:'Capital de giro',reserva:'Reserva',conta:'Conta',outros:'Outros'})[c]||c||'Outros'}
+function finDaysLeft(a){if(a.dueDate){const d=Math.ceil((new Date(`${a.dueDate}T23:59:59`)-new Date())/86400000);return Math.max(1,d)}return Math.max(1,parseInt(a.days)||1)}
+function finOrders(){return S.get('pp_orders',[]).filter(o=>o.status==='done')}
+function finPaymentTotals(orders){const out={dinheiro:0,cartao:0,pix:0,outros:0};orders.forEach(o=>{if(Array.isArray(o.payment)){o.payment.forEach(p=>{out[p.type]!==undefined?out[p.type]+=Number(p.value)||0:out.outros+=Number(p.value)||0})}else if(out[o.payment]!==undefined)out[o.payment]+=Number(o.total)||0;else out.outros+=Number(o.total)||0});return out}
+function finSummary(){
+  const orders=finOrders(), movements=S.get('pp_finance_movements',[]), today=finToday();
+  const dates=orders.map(o=>finDateKey(o.createdAt)), weekStart=new Date();weekStart.setDate(weekStart.getDate()-6);const ws=weekStart.toISOString().slice(0,10);
+  const revenue=orders.reduce((s,o)=>s+(Number(o.total)||0),0), dayRevenue=orders.filter(o=>finDateKey(o.createdAt)===today).reduce((s,o)=>s+(Number(o.total)||0),0), weekRevenue=orders.filter(o=>finDateKey(o.createdAt)>=ws).reduce((s,o)=>s+(Number(o.total)||0),0), monthRevenue=orders.filter(o=>finDateKey(o.createdAt).slice(0,7)===today.slice(0,7)).reduce((s,o)=>s+(Number(o.total)||0),0);
+  const manualIn=movements.filter(m=>m.type==='entrada').reduce((s,m)=>s+(Number(m.value)||0),0), out=movements.filter(m=>m.type==='saida').reduce((s,m)=>s+(Number(m.value)||0),0), personal=movements.filter(m=>m.type==='saida'&&m.category==='retirada').reduce((s,m)=>s+(Number(m.value)||0),0), reserved=movements.filter(m=>m.type==='saida'&&['capital','reserva'].includes(m.category)).reduce((s,m)=>s+(Number(m.value)||0),0);
+  const operational=out-personal-reserved, saldo=revenue+manualIn-out;
+  return {orders,movements,revenue,dayRevenue,weekRevenue,monthRevenue,manualIn,out,personal,reserved,operational,saldo,byPayment:finPaymentTotals(orders)};
+}
+function unlockFinance(){const pass=document.getElementById('finance-pass')?.value||'';const cfg=S.get('pp_finance_settings',{});if(pass===cfg.financePassword){financeUnlockedSession=true;navigate('financeiro')}else{const e=document.getElementById('finance-lock-error');if(e)e.textContent='Senha financeira incorreta.'}}
+function lockFinance(){financeUnlockedSession=false;navigate('financeiro')}
+function financeAccountRows(){return S.get('pp_finance_accounts',[]).map(a=>{const rem=Math.max(0,(Number(a.goal)||0)-(Number(a.accumulated)||0)),pct=Math.min(100,((Number(a.accumulated)||0)/(Number(a.goal)||1))*100),daily=rem/finDaysLeft(a);return `<tr><td>${a.name}</td><td>${fmt(a.goal)}</td><td>${fmt(a.accumulated)}</td><td>${fmt(rem)}</td><td>${fmt(daily)}</td><td>${a.dueDate?finLabelDate(a.dueDate):`${a.days||'-'} dias`}</td><td><span class="finance-tag" style="${a.status==='paid'||pct>=100?'background:rgba(46,160,67,.15);color:#3fb950':''}">${a.status==='paid'?'PAGA':pct>=100?'META ATINGIDA':'ABERTA'}</span></td><td class="row-actions"><button class="btn btn-gray btn-xs" onclick="openFinancialAccount(${a.id})">Editar</button>${a.status!=='paid'?`<button class="btn btn-green btn-xs" onclick="markFinancialAccountPaid(${a.id})">Pagar</button>`:''}<button class="btn btn-gray btn-xs" onclick="deleteFinancialAccount(${a.id})">Excluir</button></td></tr>`}).join('')||'<tr><td colspan="8" class="finance-muted" style="text-align:center;padding:20px">Nenhuma conta cadastrada.</td></tr>'}
+function financeHistoryRows(){const type=document.getElementById('fin-history-type')?.value||'all',cat=document.getElementById('fin-history-cat')?.value||'all',from=document.getElementById('fin-history-from')?.value||'',to=document.getElementById('fin-history-to')?.value||'';const rows=S.get('pp_finance_movements',[]).filter(m=>(type==='all'||m.type===type)&&(cat==='all'||m.category===cat)&&(!from||finDateKey(m.date)>=from)&&(!to||finDateKey(m.date)<=to)).reverse();return rows.map(m=>`<tr><td>${finLabelDate(m.date)}</td><td><span class="finance-tag">${m.type==='entrada'?'Entrada':'Saída'}</span></td><td>${finMovementLabel(m.category)}</td><td>${m.description||'-'}</td><td style="color:${m.type==='entrada'?'#3fb950':'#ff7b72'};font-weight:700">${m.type==='entrada'?'+':'-'} ${fmt(m.value)}</td><td>${m.notes||'-'}</td></tr>`).join('')||'<tr><td colspan="6" class="finance-muted" style="text-align:center;padding:20px">Nenhum lançamento encontrado.</td></tr>'}
+function filterFinanceHistory(){const el=document.getElementById('fin-history-body');if(el)el.innerHTML=financeHistoryRows()}
+function financeRenderUnlocked(el){
+  const s=finSummary(),cfg=S.get('pp_finance_settings',{}),accounts=S.get('pp_finance_accounts',[]),purchases=S.get('pp_finance_purchases',[]),reserves=S.get('pp_finance_reserves',[]),closings=S.get('pp_finance_closings',[]),capitalTarget=Number(cfg.capitalGoal)||4000,capitalSaved=s.movements.filter(m=>m.type==='saida'&&m.category==='capital').reduce((t,m)=>t+(Number(m.value)||0),0),goodsTarget=(Number(cfg.goodsDaily)||166.67)*30,goodsUsed=purchases.reduce((t,p)=>t+(Number(p.value)||0),0),cheeseTarget=(Number(cfg.cheeseDaily)||230)*(Number(cfg.operatingDaysPerWeek)||4),cheeseSaved=reserves.filter(r=>r.category==='queijo').reduce((t,r)=>t+(Number(r.value)||0),0);
+  const targetRows=(cfg.reserveTargets||[]).map(t=>{const saved=reserves.filter(r=>r.category===t.category).reduce((x,r)=>x+(Number(r.value)||0),0);return `<tr><td>${t.name}</td><td>${fmt(t.daily)}</td><td>${fmt(saved)}</td><td>${fmt(Math.max(0,t.daily-saved))}</td><td><button class="btn btn-blue btn-xs" onclick="openFinancialReserve('${t.category}')">Reservar</button></td></tr>`}).join('');
+  el.innerHTML=`<div class="finance-shell">
+    <div class="page-header" style="margin-bottom:16px"><h2>💰 Financeiro</h2><div class="finance-action-row" style="margin:0"><button class="btn btn-blue btn-sm" onclick="openFinancialMovement()">+ Nova movimentação</button><button class="btn btn-gray btn-sm" onclick="printFinanceiro()">🖨️ Imprimir</button><button class="btn btn-gray btn-sm" onclick="lockFinance()">🔒 Bloquear</button></div></div>
+    <div class="metric-grid" style="margin-bottom:16px"><div class="metric-card"><div class="metric-icon" style="background:rgba(46,160,67,.15)">📅</div><div><div class="metric-val">${fmt(s.dayRevenue)}</div><div class="metric-label">Faturamento do dia</div></div></div><div class="metric-card"><div class="metric-icon" style="background:rgba(31,111,235,.15)">📊</div><div><div class="metric-val">${fmt(s.weekRevenue)}</div><div class="metric-label">Faturamento da semana</div></div></div><div class="metric-card"><div class="metric-icon" style="background:rgba(139,92,246,.15)">🗓️</div><div><div class="metric-val">${fmt(s.monthRevenue)}</div><div class="metric-label">Faturamento do mês</div></div></div><div class="metric-card"><div class="metric-icon" style="background:rgba(240,192,0,.15)">💰</div><div><div class="metric-val">${fmt(s.revenue)}</div><div class="metric-label">Faturamento acumulado</div></div></div></div>
+    <div class="finance-grid-2"><div class="finance-section"><h3>Resultado real</h3><table><tr><td>Faturamento</td><td style="text-align:right;color:#3fb950;font-weight:700">${fmt(s.revenue)}</td></tr><tr><td>Despesas operacionais</td><td style="text-align:right;color:#ff7b72;font-weight:700">- ${fmt(s.operational)}</td></tr><tr><td>Reservas e capital</td><td style="text-align:right;color:#f0c000;font-weight:700">- ${fmt(s.reserved)}</td></tr><tr style="border-top:2px solid var(--border)"><td><strong>Resultado operacional</strong></td><td style="text-align:right;color:var(--red);font-weight:700">${fmt(s.revenue-s.operational-s.reserved)}</td></tr><tr><td>Retiradas pessoais</td><td style="text-align:right">${fmt(s.personal)}</td></tr><tr><td><strong>Saldo disponível</strong></td><td style="text-align:right;color:#58a6ff;font-weight:700">${fmt(s.saldo)}</td></tr></table></div><div class="finance-section"><h3>Entradas por pagamento</h3><canvas id="fin-payment-chart" height="150"></canvas><div class="finance-grid-3"><div class="finance-mini"><div class="finance-mini-label">Dinheiro</div><div class="finance-mini-value">${fmt(s.byPayment.dinheiro)}</div></div><div class="finance-mini"><div class="finance-mini-label">Cartão</div><div class="finance-mini-value">${fmt(s.byPayment.cartao)}</div></div><div class="finance-mini"><div class="finance-mini-label">Pix</div><div class="finance-mini-value">${fmt(s.byPayment.pix)}</div></div></div></div></div>
+    <div class="finance-section"><h3>Contas e metas <button class="btn btn-blue btn-sm" onclick="openFinancialAccount()">+ Adicionar conta</button></h3><div class="finance-scroll"><table><thead><tr><th>Conta</th><th>Meta</th><th>Acumulado</th><th>Faltam</th><th>Diário</th><th>Prazo</th><th>Status</th><th>Ações</th></tr></thead><tbody>${financeAccountRows()}</tbody></table></div></div>
+    <div class="finance-grid-3"><div class="finance-section"><h3>Capital de giro</h3><div class="finance-mini-value">${fmt(capitalSaved)} / ${fmt(capitalTarget)}</div><div class="finance-progress"><span style="width:${Math.min(100,capitalSaved/capitalTarget*100)}%"></span></div><div class="finance-muted">${capitalSaved>=capitalTarget?'Capital de giro completo':`${fmt(Math.max(0,capitalTarget-capitalSaved))} restantes`}</div><button class="btn btn-blue btn-sm" style="margin-top:10px" onclick="openFinancialReserve('capital')">Reservar capital</button></div><div class="finance-section"><h3>Mercadorias</h3><div class="finance-mini-value">${fmt(goodsUsed)} / ${fmt(goodsTarget)}</div><div class="finance-progress"><span style="width:${Math.min(100,goodsUsed/goodsTarget*100)}%"></span></div><div class="finance-muted">Valor utilizado: ${fmt(goodsUsed)}</div><button class="btn btn-blue btn-sm" style="margin-top:10px" onclick="openFinancialPurchase()">Registrar compra</button></div><div class="finance-section"><h3>Queijo</h3><div class="finance-mini-value">${fmt(cheeseSaved)} / ${fmt(cheeseTarget)}</div><div class="finance-progress"><span style="width:${Math.min(100,cheeseSaved/cheeseTarget*100)}%"></span></div><div class="finance-muted">${fmt(cfg.cheeseDaily||230)} por dia · ${cfg.operatingDaysPerWeek||4} dias/semana</div><button class="btn btn-blue btn-sm" style="margin-top:10px" onclick="openFinancialReserve('queijo')">Reservar queijo</button></div></div>
+    <div class="finance-section"><h3>Reservas diárias</h3><div class="finance-scroll"><table><thead><tr><th>Obrigação</th><th>Necessário/dia</th><th>Acumulado</th><th>Falta no ciclo</th><th>Ação</th></tr></thead><tbody>${targetRows}</tbody></table></div></div>
+    <div class="finance-section"><h3>Lançamentos financeiros <button class="btn btn-blue btn-sm" onclick="openFinancialMovement()">+ Novo lançamento</button></h3><div class="finance-action-row"><select id="fin-history-type" onchange="filterFinanceHistory()"><option value="all">Todos os tipos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option></select><select id="fin-history-cat" onchange="filterFinanceHistory()"><option value="all">Todas as categorias</option><option value="mercadoria">Mercadoria</option><option value="queijo">Queijo</option><option value="retirada">Retirada pessoal</option><option value="conta">Conta</option><option value="capital">Capital de giro</option><option value="outros">Outros</option></select><input id="fin-history-from" type="date" onchange="filterFinanceHistory()"><input id="fin-history-to" type="date" onchange="filterFinanceHistory()"></div><div class="finance-scroll"><table><thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Valor</th><th>Observação</th></tr></thead><tbody id="fin-history-body">${financeHistoryRows()}</tbody></table></div></div>
+    <div class="finance-grid-2"><div class="finance-section"><h3>Fechamento diário <button class="btn btn-blue btn-sm" onclick="closeFinancialDay()">Fechar o dia</button></h3><p class="finance-muted">Registre o resultado do dia sem apagar o histórico.</p><div class="finance-scroll"><table><thead><tr><th>Data</th><th>Faturamento</th><th>Entradas</th><th>Saídas</th><th>Reservado</th><th>Retiradas</th><th>Saldo</th></tr></thead><tbody>${closings.slice().reverse().map(c=>`<tr><td>${finLabelDate(c.date)}</td><td>${fmt(c.revenue)}</td><td>${fmt(c.income)}</td><td>${fmt(c.out)}</td><td>${fmt(c.reserved)}</td><td>${fmt(c.personal)}</td><td><strong>${fmt(c.balance)}</strong></td></tr>`).join('')||'<tr><td colspan="7" class="finance-muted" style="text-align:center;padding:18px">Nenhum fechamento realizado.</td></tr>'}</tbody></table></div></div><div class="finance-section"><h3>Configurações financeiras <button class="btn btn-blue btn-sm" onclick="openFinanceSettings()">Editar</button></h3><p class="finance-muted">Capital de giro: ${fmt(capitalTarget)} · Mercadoria/dia: ${fmt(cfg.goodsDaily||0)} · Queijo/dia: ${fmt(cfg.cheeseDaily||0)} · ${cfg.operatingDaysPerWeek||4} dias/semana</p><p class="finance-muted" style="margin-top:8px">A senha adicional do Financeiro pode ser alterada nas configurações.</p></div></div>
+    <div class="finance-section"><h3>Compras de mercadorias</h3><div class="finance-scroll"><table><thead><tr><th>Data</th><th>Fornecedor</th><th>Descrição</th><th>Valor</th><th>Observação</th><th>Ações</th></tr></thead><tbody>${purchases.slice().reverse().map(p=>`<tr><td>${finLabelDate(p.date)}</td><td>${p.supplier||'-'}</td><td>${p.description||'-'}</td><td>${fmt(p.value)}</td><td>${p.notes||'-'}</td><td><button class="btn btn-gray btn-xs" onclick="openFinancialPurchase(${p.id})">Editar</button></td></tr>`).join('')||'<tr><td colspan="6" class="finance-muted" style="text-align:center;padding:18px">Nenhuma compra registrada.</td></tr>'}</tbody></table></div></div>
+  </div>`;
+  setTimeout(()=>{const p=document.getElementById('fin-payment-chart')?.getContext('2d');if(p&&window.Chart)new Chart(p,{type:'doughnut',data:{labels:['Dinheiro','Cartão','Pix'],datasets:[{data:[s.byPayment.dinheiro,s.byPayment.cartao,s.byPayment.pix],backgroundColor:['#f0c000','#1f6feb','#27ae60'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#e6edf3'}}}}});},50);
+}
+function financeiro(el){if(!financeUnlockedSession){el.innerHTML=`<div class="finance-shell"><div class="finance-section" style="max-width:520px;margin:40px auto;text-align:center"><h2 style="margin-bottom:10px">🔒 Financeiro protegido</h2><p class="finance-muted" style="margin-bottom:18px">Digite a senha adicional para acessar os dados financeiros.</p><div class="form-row"><input id="finance-pass" type="password" placeholder="Senha do Financeiro" onkeydown="if(event.key==='Enter')unlockFinance()"></div><div id="finance-lock-error" class="alert alert-error" style="display:block;margin-bottom:12px"></div><button class="btn btn-blue" onclick="unlockFinance()">Acessar Financeiro</button></div></div>`;return}financeRenderUnlocked(el)}
+function openFinancialMovement(id){const m=S.get('pp_finance_movements',[]).find(x=>x.id===id);openModal(`<div class="modal"><h3>💰 ${m?'Editar':'Nova'} movimentação</h3><div class="form-cols"><div class="form-row"><label>Tipo</label><select id="fm-type"><option value="entrada" ${m?.type==='entrada'?'selected':''}>Entrada</option><option value="saida" ${m?.type==='saida'?'selected':''}>Saída</option></select></div><div class="form-row"><label>Data</label><input id="fm-date" type="date" value="${finDateKey(m?.date||finToday())}"></div></div><div class="form-cols"><div class="form-row"><label>Categoria</label><select id="fm-cat"><option value="outros">Outros</option><option value="retirada">Retirada pessoal</option><option value="mercadoria">Mercadoria</option><option value="queijo">Queijo</option><option value="conta">Conta</option><option value="capital">Capital de giro</option><option value="reserva">Reserva</option></select></div><div class="form-row"><label>Valor</label><input id="fm-value" type="number" step="0.01" value="${m?.value||''}"></div></div><div class="form-row"><label>Descrição</label><input id="fm-desc" value="${m?.description||''}" placeholder="Ex.: pagamento, compra, aporte..."></div><div class="form-row"><label>Observação</label><input id="fm-notes" value="${m?.notes||''}"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialMovement(${id||'null'})">Salvar</button></div></div>`)}
+function saveFinancialMovement(id){const items=S.get('pp_finance_movements',[]),data={id:id||nextId(items),type:document.getElementById('fm-type').value,date:document.getElementById('fm-date').value,category:document.getElementById('fm-cat').value,value:finNum('fm-value'),description:document.getElementById('fm-desc').value.trim(),notes:document.getElementById('fm-notes').value.trim()};if(!data.value){alert('Informe um valor válido');return}const i=items.findIndex(x=>x.id===id);if(i>=0)items[i]=data;else items.push(data);S.set('pp_finance_movements',items);closeModal();navigate('financeiro')}
+function openFinancialAccount(id){const a=S.get('pp_finance_accounts',[]).find(x=>x.id===id);openModal(`<div class="modal"><h3>📌 ${a?'Editar':'Adicionar'} conta/meta</h3><div class="form-row"><label>Nome da conta</label><input id="fa-name" value="${a?.name||''}" placeholder="Ex.: Funcionários"></div><div class="form-cols"><div class="form-row"><label>Valor necessário</label><input id="fa-goal" type="number" step="0.01" value="${a?.goal||''}"></div><div class="form-row"><label>Valor acumulado</label><input id="fa-acc" type="number" step="0.01" value="${a?.accumulated||0}"></div></div><div class="form-cols"><div class="form-row"><label>Data de vencimento</label><input id="fa-due" type="date" value="${a?.dueDate||''}"></div><div class="form-row"><label>Dias para juntar</label><input id="fa-days" type="number" value="${a?.days||30}"></div></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialAccount(${id||'null'})">Salvar</button></div></div>`)}
+function saveFinancialAccount(id){const items=S.get('pp_finance_accounts',[]),goal=finNum('fa-goal'),acc=finNum('fa-acc'),data={id:id||nextId(items),name:document.getElementById('fa-name').value.trim(),goal,accumulated:acc,dueDate:document.getElementById('fa-due').value,days:parseInt(document.getElementById('fa-days').value)||30,status:acc>=goal?'reached':'open'};if(!data.name||!goal){alert('Informe nome e meta');return}const i=items.findIndex(x=>x.id===id);if(i>=0)items[i]={...items[i],...data};else items.push(data);S.set('pp_finance_accounts',items);closeModal();navigate('financeiro')}
+function markFinancialAccountPaid(id){const items=S.get('pp_finance_accounts',[]),a=items.find(x=>x.id===id);if(!a||a.status==='paid')return;if(!confirm(`Marcar ${a.name} como paga?`))return;const remaining=Math.max(0,(Number(a.goal)||0)-(Number(a.accumulated)||0));a.accumulated=a.goal;a.status='paid';a.paidAt=finToday();S.set('pp_finance_accounts',items);if(remaining) {const mv=S.get('pp_finance_movements',[]);mv.push({id:nextId(mv),type:'saida',category:'conta',value:remaining,date:finToday(),description:`Pagamento: ${a.name}`,notes:'Conta marcada como paga'});S.set('pp_finance_movements',mv)}navigate('financeiro')}
+function deleteFinancialAccount(id){if(!confirm('Excluir esta conta/meta?'))return;S.set('pp_finance_accounts',S.get('pp_finance_accounts',[]).filter(a=>a.id!==id));navigate('financeiro')}
+function openFinancialPurchase(id){const p=S.get('pp_finance_purchases',[]).find(x=>x.id===id);openModal(`<div class="modal"><h3>🛒 ${p?'Editar':'Registrar'} compra de mercadoria</h3><div class="form-cols"><div class="form-row"><label>Data</label><input id="fp-date" type="date" value="${finDateKey(p?.date||finToday())}"></div><div class="form-row"><label>Valor</label><input id="fp-value" type="number" step="0.01" value="${p?.value||''}"></div></div><div class="form-row"><label>Fornecedor</label><input id="fp-supplier" value="${p?.supplier||''}"></div><div class="form-row"><label>Descrição</label><input id="fp-desc" value="${p?.description||''}"></div><div class="form-row"><label>Observação</label><input id="fp-notes" value="${p?.notes||''}"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialPurchase(${id||'null'})">Salvar</button></div></div>`)}
+function saveFinancialPurchase(id){const items=S.get('pp_finance_purchases',[]),data={id:id||nextId(items),date:document.getElementById('fp-date').value,value:finNum('fp-value'),supplier:document.getElementById('fp-supplier').value.trim(),description:document.getElementById('fp-desc').value.trim(),notes:document.getElementById('fp-notes').value.trim()};if(!data.value){alert('Informe o valor');return}const i=items.findIndex(x=>x.id===id);if(i>=0){const old=items[i];data.movementId=old.movementId;items[i]=data;const mv=S.get('pp_finance_movements',[]),mi=mv.findIndex(x=>x.id===old.movementId);if(mi>=0)mv[mi]={...mv[mi],date:data.date,value:data.value,description:`Compra: ${data.description||data.supplier}`};S.set('pp_finance_movements',mv)}else{const mv=S.get('pp_finance_movements',[]);data.movementId=nextId(mv);mv.push({id:data.movementId,type:'saida',category:'mercadoria',value:data.value,date:data.date,description:`Compra: ${data.description||data.supplier}`,notes:data.notes});S.set('pp_finance_movements',mv);items.push(data)}S.set('pp_finance_purchases',items);closeModal();navigate('financeiro')}
+function openFinancialReserve(category){const cfg=S.get('pp_finance_settings',{}),label=(cfg.reserveTargets||[]).find(x=>x.category===category)?.name||({capital:'Capital de giro',queijo:'Queijo'}[category]||'Reserva');openModal(`<div class="modal"><h3>🏦 Registrar reserva — ${label}</h3><div class="form-cols"><div class="form-row"><label>Data</label><input id="fr-date" type="date" value="${finToday()}"></div><div class="form-row"><label>Valor</label><input id="fr-value" type="number" step="0.01"></div></div><div class="form-row"><label>Categoria</label><select id="fr-cat"><option value="${category}">${label}</option><option value="reserva">Outra reserva</option></select></div><div class="form-row"><label>Observação</label><input id="fr-notes" placeholder="Ex.: reserva do dia"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialReserve()">Salvar</button></div></div>`)}
+function saveFinancialReserve(){const reserves=S.get('pp_finance_reserves',[]),date=document.getElementById('fr-date').value,value=finNum('fr-value'),category=document.getElementById('fr-cat').value,notes=document.getElementById('fr-notes').value.trim();if(!value){alert('Informe o valor');return}reserves.push({id:nextId(reserves),date,value,category,notes});S.set('pp_finance_reserves',reserves);const mv=S.get('pp_finance_movements',[]);mv.push({id:nextId(mv),type:'saida',category:category==='capital'?'capital':'reserva',value,date,description:`Reserva: ${finMovementLabel(category)}`,notes});S.set('pp_finance_movements',mv);closeModal();navigate('financeiro')}
+function closeFinancialDay(){const s=finSummary(),d=finToday(),orders=s.orders.filter(o=>finDateKey(o.createdAt)===d),mv=s.movements.filter(m=>finDateKey(m.date)===d),income=mv.filter(m=>m.type==='entrada').reduce((t,m)=>t+(Number(m.value)||0),0),out=mv.filter(m=>m.type==='saida').reduce((t,m)=>t+(Number(m.value)||0),0),reserved=mv.filter(m=>m.type==='saida'&&['capital','reserva'].includes(m.category)).reduce((t,m)=>t+(Number(m.value)||0),0),personal=mv.filter(m=>m.type==='saida'&&m.category==='retirada').reduce((t,m)=>t+(Number(m.value)||0),0),data={id:nextId(S.get('pp_finance_closings',[])),date:d,revenue:orders.reduce((t,o)=>t+(Number(o.total)||0),0),income,out,reserved,personal,balance:orders.reduce((t,o)=>t+(Number(o.total)||0),0)+income-out};const rows=S.get('pp_finance_closings',[]).filter(x=>x.date!==d);rows.push(data);S.set('pp_finance_closings',rows);alert(`Fechamento de ${finLabelDate(d)} salvo com saldo de ${fmt(data.balance)}.`);navigate('financeiro')}
+function openFinanceSettings(){const cfg=S.get('pp_finance_settings',{});openModal(`<div class="modal"><h3>⚙️ Configurações financeiras</h3><div class="form-cols"><div class="form-row"><label>Senha do Financeiro</label><input id="ffs-pass" type="password" placeholder="Deixe em branco para manter"></div><div class="form-row"><label>Meta do capital de giro</label><input id="ffs-capital" type="number" step="0.01" value="${cfg.capitalGoal||4000}"></div></div><div class="form-cols"><div class="form-row"><label>Mercadoria por dia</label><input id="ffs-goods" type="number" step="0.01" value="${cfg.goodsDaily||166.67}"></div><div class="form-row"><label>Queijo por dia</label><input id="ffs-cheese" type="number" step="0.01" value="${cfg.cheeseDaily||230}"></div></div><div class="form-row"><label>Dias de operação por semana</label><input id="ffs-days" type="number" value="${cfg.operatingDaysPerWeek||4}"></div><p class="finance-muted">A senha inicial do Financeiro é 271822 e pode ser alterada aqui.</p><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinanceSettings()">Salvar</button></div></div>`)}
+function saveFinanceSettings(){const cfg=S.get('pp_finance_settings',{});const p=document.getElementById('ffs-pass').value.trim();if(p)cfg.financePassword=p;cfg.capitalGoal=finNum('ffs-capital')||4000;cfg.goodsDaily=finNum('ffs-goods')||166.67;cfg.cheeseDaily=finNum('ffs-cheese')||230;cfg.operatingDaysPerWeek=parseInt(document.getElementById('ffs-days').value)||4;S.set('pp_finance_settings',cfg);closeModal();navigate('financeiro')}
+
 
 // ============================================================
 // ACCOUNT
