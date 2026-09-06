@@ -360,7 +360,7 @@ const S = {
 // FIREBASE SYNC — opcional. Ativa para multi-dispositivo
 // ============================================================
 let firebaseDb=null,useFirebase=false,lastSyncAt=0;
-const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings'];
+const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings','pp_promotions'];
 
 function setupFirebase(config){
   try{
@@ -484,6 +484,7 @@ function initData(){
   if(!S.get('pp_finance_purchases',null)) S.set('pp_finance_purchases',[]);
   if(!S.get('pp_finance_reserves',null)) S.set('pp_finance_reserves',[]);
   if(!S.get('pp_finance_closings',null)) S.set('pp_finance_closings',[]);
+  if(!S.get('pp_promotions',null)) S.set('pp_promotions',[]);
   const defaultBorders=[
     {id:1,name:'Sem Borda',price:0},
     {id:2,name:'Catupiry',price:6.00},
@@ -543,6 +544,18 @@ function initData(){
      sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
     {id:17,name:'Camarão com Creme Cheese',category:'Especiais',description:'Creme cheese, mussarela, filé de camarão refogado no alho e óleo, cebola',active:true,
      sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+
+    // BEBIDAS
+    {id:18,name:'Cajuína 1L',category:'Bebida',description:'Cajuína garrafa 1 litro',active:true,sizes:[{name:'1L',price:11.00}]},
+    {id:19,name:'Coca-Cola 1L',category:'Bebida',description:'Coca-Cola garrafa 1 litro',active:true,sizes:[{name:'1L',price:11.00}]},
+    {id:20,name:'Cajuína 2L',category:'Bebida',description:'Cajuína garrafa 2 litros',active:true,sizes:[{name:'2L',price:16.00}]},
+    {id:21,name:'Coca-Cola 2L',category:'Bebida',description:'Coca-Cola garrafa 2 litros',active:true,sizes:[{name:'2L',price:16.00}]},
+
+    // SALGADOS
+    {id:22,name:'Coxinha de Frango',category:'Salgado',description:'Coxinha recheada com frango',active:true,sizes:[{name:'Unidade',price:6.00}]},
+    {id:23,name:'Coxinha Frango com Catupiry',category:'Salgado',description:'Coxinha recheada com frango e catupiry',active:true,sizes:[{name:'Unidade',price:7.00}]},
+    {id:24,name:'Coxinha de Carne de Sol com Creme Cheese',category:'Salgado',description:'Coxinha recheada com carne de sol e creme cheese',active:true,sizes:[{name:'Unidade',price:8.00}]},
+    {id:25,name:'Esfirra',category:'Salgado',description:'Esfirra recheada',active:true,sizes:[{name:'Unidade',price:6.00}]}
   ];
 
   // Forçar atualização se o menu for o antigo ou se não houver produtos
@@ -872,7 +885,8 @@ function pdv(el){
   cart=[];
   multiPayments = [];
   const products=S.get('pp_products',[]).filter(p=>p.active);
-  const cats=['Todos',...new Set(products.map(p=>p.category))];
+  const promotions=S.get('pp_promotions',[]).filter(p=>p.active);
+  const cats=['Todos',...(promotions.length?['Promoções']:[]),...new Set(products.map(p=>p.category))];
 
   el.innerHTML=`
   <div class="pdv-layout">
@@ -1018,17 +1032,33 @@ function productCard(p){
   </div>`;
 }
 
+function promotionCard(p){
+  return `<div class="product-card" onclick="openPromotionOptions(${p.id})" style="border-color:rgba(240,192,0,.45)">
+    <div class="pc-icon">⚡</div>
+    <div class="pc-name">${p.name}</div>
+    <div class="pc-price" style="color:#f0c000">${fmt(p.price)}</div>
+    <div class="pc-sizes">Promoção${p.items?` · ${p.items}`:''}</div>
+  </div>`;
+}
+
 function filterCat(cat,btn){
   document.querySelectorAll('.cat-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const products=S.get('pp_products',[]).filter(p=>p.active);
+  const promotions=S.get('pp_promotions',[]).filter(p=>p.active);
+  if(cat==='Promoções'){
+    document.getElementById('product-grid').innerHTML=promotions.map(p=>promotionCard(p)).join('')||'<p style="color:var(--muted);padding:20px">Nenhuma promoção ativa.</p>';
+    return;
+  }
   const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
   document.getElementById('product-grid').innerHTML=filtered.map(p=>productCard(p)).join('');
 }
 
 function filterProducts(q){
-  const products=S.get('pp_products',[]).filter(p=>p.active&&p.name.toLowerCase().includes(q.toLowerCase()));
-  document.getElementById('product-grid').innerHTML=products.map(p=>productCard(p)).join('');
+  const query=q.toLowerCase();
+  const products=S.get('pp_products',[]).filter(p=>p.active&&(`${p.name} ${p.description||''}`).toLowerCase().includes(query));
+  const promotions=S.get('pp_promotions',[]).filter(p=>p.active&&(`${p.name} ${p.description||''} ${p.items||''}`).toLowerCase().includes(query));
+  document.getElementById('product-grid').innerHTML=[...products.map(p=>productCard(p)),...promotions.map(p=>promotionCard(p))].join('')||'<p style="color:var(--muted);padding:20px">Nenhum item encontrado.</p>';
 }
 
 function openProductOptions(id){
@@ -1155,6 +1185,18 @@ function addToCart(id){
   cart.push({id:p.id,name:p.name,category:p.category,size:sizeName,border:borderName,qty,unitPrice,basePrice,price:unitPrice*qty,obs,isHalfHalf:!!flavors,flavors});
   closeLastModal();
   renderCart();
+}
+
+function openPromotionOptions(id){
+  const p=S.get('pp_promotions',[]).find(x=>x.id===id);
+  if(!p)return;
+  openModal(`<div class="modal"><h3>⚡ ${p.name}</h3>${p.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:10px">${p.description}</p>`:''}${p.items?`<div style="background:rgba(240,192,0,.08);border:1px solid rgba(240,192,0,.25);padding:9px;border-radius:7px;font-size:12px;margin-bottom:14px">Itens: ${p.items}</div>`:''}<div class="form-row"><label>Preço promocional</label><div style="font-size:20px;font-weight:700;color:#f0c000">${fmt(p.price)}</div></div><div class="form-row"><label>Quantidade</label><input id="promo-qty" type="number" min="1" value="1"></div><div class="form-row"><label>Observação</label><input id="promo-obs" placeholder="Observação do pedido"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeLastModal()">Cancelar</button><button class="btn btn-red" onclick="addPromotionToCart(${id})">Adicionar ao Carrinho</button></div></div>`);
+}
+function addPromotionToCart(id){
+  const p=S.get('pp_promotions',[]).find(x=>x.id===id);if(!p)return;
+  const qty=Math.max(1,parseInt(document.getElementById('promo-qty')?.value)||1),obs=document.getElementById('promo-obs')?.value.trim()||'',unitPrice=Number(p.price)||0;
+  cart.push({id:`promo-${p.id}`,promotionId:p.id,name:p.name,category:'Promoção',size:'Promoção',border:'',qty,unitPrice,basePrice:unitPrice,price:unitPrice*qty,obs,isPromotion:true,items:p.items||''});
+  closeLastModal();renderCart();
 }
 
 function renderCart(){
@@ -1512,31 +1554,28 @@ function clickMesa(id){
 // ============================================================
 // PRODUCTS
 // ============================================================
+let productsView='catalog';
 function products(el){
-  const items=S.get('pp_products',[]);
-  el.innerHTML=`
-  <div class="page-header" style="margin-bottom:16px">
-    <h2>🍕 Produtos</h2>
-    <button class="btn btn-red" onclick="openProductForm()">+ Novo Produto</button>
-  </div>
-  <div id="prod-alert" class="alert"></div>
-  <div class="table-box">
-    <table><thead><tr><th>#</th><th>Nome</th><th>Categoria</th><th>Tamanhos e Preços</th><th>Status</th><th>Ações</th></tr></thead>
-    <tbody>
-      ${items.map(p=>`<tr>
-        <td>${p.id}</td><td><strong>${p.name}</strong>${p.description?`<br><span style="font-size:11px;color:var(--muted)">${p.description}</span>`:''}</td>
-        <td>${p.category}</td>
-        <td style="font-size:12px">${p.sizes?.map(s=>`<span style="background:var(--card2);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block">${s.name}: ${fmt(s.price)}</span>`).join('')||'-'}</td>
-        <td><span class="badge ${p.active?'badge-active':'badge-inactive'}">${p.active?'Ativo':'Inativo'}</span></td>
-        <td class="row-actions">
-          <button class="btn btn-blue btn-xs" onclick="openProductForm(${p.id})">✏️ Editar</button>
-          <button class="btn btn-xs btn-gray" onclick="toggleProduct(${p.id})">${p.active?'Desativar':'Ativar'}</button>
-          <button class="btn btn-xs" style="background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)" onclick="deleteProduct(${p.id})">🗑</button>
-        </td>
-      </tr>`).join('')}
-    </tbody></table>
-  </div>`;
+  const items=S.get('pp_products',[]), promotions=S.get('pp_promotions',[]);
+  const body=productsView==='promotions'?`
+    <div class="table-box"><table><thead><tr><th>#</th><th>Promoção</th><th>Itens incluídos</th><th>Preço</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+      ${promotions.map(p=>`<tr><td>${p.id}</td><td><strong>${p.name}</strong>${p.description?`<br><span style="font-size:11px;color:var(--muted)">${p.description}</span>`:''}</td><td>${p.items||'-'}</td><td><strong style="color:#f0c000">${fmt(p.price)}</strong></td><td><span class="badge ${p.active?'badge-active':'badge-inactive'}">${p.active?'Ativa':'Inativa'}</span></td><td class="row-actions"><button class="btn btn-blue btn-xs" onclick="openPromotionForm(${p.id})">✏️ Editar</button><button class="btn btn-xs btn-gray" onclick="togglePromotion(${p.id})">${p.active?'Desativar':'Ativar'}</button><button class="btn btn-xs" style="background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)" onclick="deletePromotion(${p.id})">🗑</button></td></tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Nenhuma promoção cadastrada.</td></tr>'}
+    </tbody></table></div>`:`
+    <div class="table-box"><table><thead><tr><th>#</th><th>Nome</th><th>Categoria</th><th>Tamanhos e Preços</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+      ${items.map(p=>`<tr><td>${p.id}</td><td><strong>${p.name}</strong>${p.description?`<br><span style="font-size:11px;color:var(--muted)">${p.description}</span>`:''}</td><td>${p.category}</td><td style="font-size:12px">${p.sizes?.map(s=>`<span style="background:var(--card2);padding:2px 8px;border-radius:10px;margin:2px;display:inline-block">${s.name}: ${fmt(s.price)}</span>`).join('')||'-'}</td><td><span class="badge ${p.active?'badge-active':'badge-inactive'}">${p.active?'Ativo':'Inativo'}</span></td><td class="row-actions"><button class="btn btn-blue btn-xs" onclick="openProductForm(${p.id})">✏️ Editar</button><button class="btn btn-xs btn-gray" onclick="toggleProduct(${p.id})">${p.active?'Desativar':'Ativar'}</button><button class="btn btn-xs" style="background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)" onclick="deleteProduct(${p.id})">🗑</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  el.innerHTML=`<div class="page-header" style="margin-bottom:16px"><h2>${productsView==='promotions'?'⚡ Promoções':'🍕 Produtos'}</h2><button class="btn btn-red" onclick="${productsView==='promotions'?'openPromotionForm()':'openProductForm()'}">+ ${productsView==='promotions'?'Nova Promoção':'Novo Produto'}</button></div><div class="cat-tabs" style="margin-bottom:16px"><button class="cat-tab ${productsView==='catalog'?'active':''}" onclick="switchProductsView('catalog')">🍕 Catálogo</button><button class="cat-tab ${productsView==='promotions'?'active':''}" onclick="switchProductsView('promotions')">⚡ Promoções</button></div><div id="prod-alert" class="alert"></div>${body}`;
 }
+function switchProductsView(view){productsView=view;navigate('products')}
+
+function openPromotionForm(id){
+  const items=S.get('pp_promotions',[]),p=id?items.find(x=>x.id===id):null;
+  openModal(`<div class="modal"><h3>${p?'✏️ Editar Promoção':'⚡ Nova Promoção'}</h3><div class="form-row"><label>Nome da promoção</label><input id="pr-name" value="${p?.name||''}" placeholder="Ex.: Combo Família"></div><div class="form-row"><label>Descrição</label><input id="pr-desc" value="${p?.description||''}" placeholder="Ex.: 2 pizzas + bebida"></div><div class="form-row"><label>Itens incluídos</label><input id="pr-items" value="${p?.items||''}" placeholder="Ex.: Calabresa + Coca-Cola 2L"></div><div class="form-row"><label>Preço promocional</label><input id="pr-price" type="number" step="0.01" value="${p?.price||''}"></div><div class="form-row"><label style="display:flex;align-items:center;gap:8px"><input id="pr-active" type="checkbox" ${p?.active!==false?'checked':''}> Promoção ativa no PDV</label></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-red" onclick="savePromotion(${id||'null'})">Salvar</button></div></div>`);
+}
+function savePromotion(id){const name=document.getElementById('pr-name').value.trim(),price=parseFloat(document.getElementById('pr-price').value),items=S.get('pp_promotions',[]);if(!name||isNaN(price)||price<0){alert('Informe nome e preço válidos');return}const data={id:id||nextId(items),name,description:document.getElementById('pr-desc').value.trim(),items:document.getElementById('pr-items').value.trim(),price,active:document.getElementById('pr-active').checked};const i=items.findIndex(x=>x.id===id);if(i>=0)items[i]=data;else items.push(data);S.set('pp_promotions',items);closeModal();productsView='promotions';navigate('products')}
+function togglePromotion(id){const items=S.get('pp_promotions',[]),p=items.find(x=>x.id===id);if(p){p.active=!p.active;S.set('pp_promotions',items);navigate('products')}}
+function deletePromotion(id){if(!confirm('Excluir esta promoção?'))return;S.set('pp_promotions',S.get('pp_promotions',[]).filter(p=>p.id!==id));navigate('products')}
+
 
 function openProductForm(id){
   const items=S.get('pp_products',[]);
@@ -2069,8 +2108,8 @@ function addItemToOrder(id){
 }
 
 function openAddItemsModal(o){
-  const products=S.get('pp_products',[]).filter(p=>p.active);
-  const cats=['Todos',...new Set(products.map(p=>p.category))];
+  const products=S.get('pp_products',[]).filter(p=>p.active),promotions=S.get('pp_promotions',[]).filter(p=>p.active);
+  const cats=['Todos',...(promotions.length?['Promoções']:[]),...new Set(products.map(p=>p.category))];
   openModal(`<div class="modal modal-lg" style="width:800px">
     <h3>➕ Adicionar Itens — Pedido #${o.id} (${o.client})</h3>
     <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
@@ -2084,7 +2123,7 @@ function openAddItemsModal(o){
             <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
             <div class="pc-name">${p.name}</div>
             <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
-          </div>`).join('')}
+          </div>`).join('')}${promotions.map(p=>promotionAddCard(p)).join('')}
         </div>
       </div>
       <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:400px;overflow-y:auto">
@@ -2103,27 +2142,21 @@ function openAddItemsModal(o){
   </div>`);
 }
 
+function promotionAddCard(p){return `<div class="product-card" onclick="openAddPromotionOptions(${p.id})" style="border-color:rgba(240,192,0,.45)"><div class="pc-icon">⚡</div><div class="pc-name">${p.name}</div><div class="pc-price" style="color:#f0c000">${fmt(p.price)}</div><div class="pc-sizes">Promoção</div></div>`}
 function filterAddProducts(q){
-  const products=S.get('pp_products',[]).filter(p=>p.active&&p.name.toLowerCase().includes(q.toLowerCase()));
+  const query=q.toLowerCase(),products=S.get('pp_products',[]).filter(p=>p.active&&(`${p.name} ${p.description||''}`).toLowerCase().includes(query)),promotions=S.get('pp_promotions',[]).filter(p=>p.active&&(`${p.name} ${p.description||''} ${p.items||''}`).toLowerCase().includes(query));
   const el=document.getElementById('add-product-grid');
-  if(el) el.innerHTML=products.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
-    <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
-    <div class="pc-name">${p.name}</div>
-    <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
-  </div>`).join('');
+  if(el) el.innerHTML=[...products.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})"><div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div><div class="pc-name">${p.name}</div><div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div></div>`),...promotions.map(p=>promotionAddCard(p))].join('');
 }
 
 function filterAddCat(cat,btn){
   document.querySelectorAll('#add-cat-tabs .cat-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  const products=S.get('pp_products',[]).filter(p=>p.active);
-  const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
+  const products=S.get('pp_products',[]).filter(p=>p.active),promotions=S.get('pp_promotions',[]).filter(p=>p.active);
   const el=document.getElementById('add-product-grid');
-  if(el) el.innerHTML=filtered.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})">
-    <div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div>
-    <div class="pc-name">${p.name}</div>
-    <div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div>
-  </div>`).join('');
+  if(cat==='Promoções'){if(el)el.innerHTML=promotions.map(p=>promotionAddCard(p)).join('');return}
+  const filtered=cat==='Todos'?products:products.filter(p=>p.category===cat);
+  if(el) el.innerHTML=filtered.map(p=>`<div class="product-card" onclick="openAddProductOptions(${p.id})"><div class="pc-icon">${p.category==='Pizza'?'🍕':p.category==='Salgado'?'🥐':p.category==='Bebida'?'🥤':'🍰'}</div><div class="pc-name">${p.name}</div><div class="pc-price">A partir de ${fmt(p.sizes&&p.sizes.length?Math.min(...p.sizes.map(s=>s.price)):0)}</div></div>`).join('');
 }
 
 function openAddProductOptions(id){
@@ -2183,6 +2216,17 @@ function openAddProductOptions(id){
     </div>
   </div>`);
   updatePizzaOptionPreview('ap');
+}
+
+function openAddPromotionOptions(id){
+  const p=S.get('pp_promotions',[]).find(x=>x.id===id);if(!p)return;
+  openModal(`<div class="modal"><h3>⚡ ${p.name}</h3>${p.description?`<p style="font-size:13px;color:var(--muted);margin-bottom:10px">${p.description}</p>`:''}${p.items?`<div style="background:rgba(240,192,0,.08);border:1px solid rgba(240,192,0,.25);padding:9px;border-radius:7px;font-size:12px;margin-bottom:14px">Itens: ${p.items}</div>`:''}<div class="form-row"><label>Preço promocional</label><div style="font-size:20px;font-weight:700;color:#f0c000">${fmt(p.price)}</div></div><div class="form-row"><label>Quantidade</label><input id="add-promo-qty" type="number" min="1" value="1"></div><div class="form-row"><label>Observação</label><input id="add-promo-obs" placeholder="Observação do pedido"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeLastModal()">Cancelar</button><button class="btn btn-red" onclick="addPromotionToOrderCart(${id})">Adicionar</button></div></div>`);
+}
+function addPromotionToOrderCart(id){
+  const p=S.get('pp_promotions',[]).find(x=>x.id===id);if(!p)return;
+  const qty=Math.max(1,parseInt(document.getElementById('add-promo-qty')?.value)||1),obs=document.getElementById('add-promo-obs')?.value.trim()||'',unitPrice=Number(p.price)||0;
+  addItemsCart.push({id:`promo-${p.id}`,promotionId:p.id,name:p.name,category:'Promoção',size:'Promoção',border:'',qty,unitPrice,basePrice:unitPrice,price:unitPrice*qty,obs,isPromotion:true,items:p.items||''});
+  closeLastModal();renderAddCart();
 }
 
 function addItemToCart(id){
