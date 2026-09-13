@@ -360,7 +360,7 @@ const S = {
 // FIREBASE SYNC — opcional. Ativa para multi-dispositivo
 // ============================================================
 let firebaseDb=null,useFirebase=false,lastSyncAt=0;
-const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings','pp_promotions'];
+const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings','pp_promotions','pp_orders_day_start'];
 
 function setupFirebase(config){
   try{
@@ -401,6 +401,11 @@ function onRemoteChange(key){
     // Recarregar badges e página se houver mudança nos pedidos
     buildSidebar();
     if(['orders','pdv','dashboard','kitchen','delivery','tables'].includes(page)) navigate(page);
+  }
+  else if(key==='pp_orders_day_start'){
+    // O início do dia é uma preferência da tela de Pedidos, não apaga pedidos.
+    buildSidebar();
+    if(page==='orders') navigate('orders');
   }
   else if(key==='pp_products'&&page==='pdv')navigate('pdv');
   else if(key==='pp_borders'&&page==='pdv')navigate('pdv');
@@ -655,7 +660,7 @@ function buildSidebar(){
 }
 
 function getBadgeCount(type){
-  if(type==='orders') return S.get('pp_orders',[]).filter(o=>o.status==='pending'||o.status==='making'||o.status==='ready'||o.status==='delivery').length;
+  if(type==='orders') return getOrdersForCurrentView().filter(o=>o.status==='pending'||o.status==='making'||o.status==='ready'||o.status==='delivery').length;
   return 0;
 }
 
@@ -688,6 +693,46 @@ function navigate(page){
 function nextId(arr){return arr.length?Math.max(...arr.map(x=>x.id))+1:1;}
 function fmt(v){return 'R$ '+Number(v||0).toFixed(2).replace('.',',');}
 function now(){return new Date().toLocaleString('pt-BR');}
+
+// Controle da visualização operacional da aba Pedidos.
+// O marcador não modifica nem remove pp_orders; ele apenas define a partir de
+// qual momento a aba começa a exibir os pedidos do novo dia.
+let ordersShowHistory=false;
+function getOrdersDayStart(){return S.get('pp_orders_day_start',null);}
+function getOrderTimestamp(order){
+  if(!order?.createdAt)return 0;
+  const raw=String(order.createdAt);
+  const match=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(match){
+    const [,day,month,year,hour,minute,second='0']=match;
+    return new Date(Number(year),Number(month)-1,Number(day),Number(hour),Number(minute),Number(second)).getTime();
+  }
+  const parsed=Date.parse(raw);
+  return Number.isNaN(parsed)?0:parsed;
+}
+function getOrdersForCurrentView(){
+  const all=S.get('pp_orders',[]);
+  if(ordersShowHistory)return all;
+  const start=Number(getOrdersDayStart()||0);
+  return start?all.filter(o=>getOrderTimestamp(o)>=start):all;
+}
+function orderDayStartLabel(){
+  const start=Number(getOrdersDayStart()||0);
+  return start?new Date(start).toLocaleString('pt-BR'):'ainda não definido';
+}
+function startNewOrdersDay(){
+  const active=S.get('pp_orders',[]).filter(o=>['pending','making','delivery','ready'].includes(o.status));
+  const warning=active.length?`\\n\\nAtenção: existem ${active.length} pedido(s) ainda em andamento. Eles não serão apagados e continuarão disponíveis nas outras telas e no histórico.`:'';
+  if(!confirm(`Iniciar um novo dia na aba Pedidos?\\n\\nOs pedidos anteriores ficarão fora da visualização operacional, mas continuarão salvos para consulta no histórico.${warning}`))return;
+  S.set('pp_orders_day_start',Date.now());
+  ordersShowHistory=false;
+  buildSidebar();
+  navigate('orders');
+}
+function toggleOrdersHistory(){
+  ordersShowHistory=!ordersShowHistory;
+  navigate('orders');
+}
 function isPizzaProduct(p){
   return !!p && (p.category==='Pizza'||['Tradicionais','Clássicas','Especiais'].includes(p.category));
 }
@@ -1311,22 +1356,31 @@ function submitOrder(){
 // ============================================================
 function orders(el){
   const allOrders=S.get('pp_orders',[]);
+  const visibleOrders=getOrdersForCurrentView();
+  const dayStart=getOrdersDayStart();
+  const count=status=>visibleOrders.filter(o=>o.status===status).length;
+  const scopeLabel=ordersShowHistory?'Histórico completo':(dayStart?`Novo dia desde ${orderDayStartLabel()}`:'Todos os pedidos salvos');
   el.innerHTML=`
-  <div class="page-header" style="margin-bottom:16px">
+  <div class="page-header" style="margin-bottom:10px">
     <h2>🧾 Pedidos</h2>
-    <button class="btn btn-red" onclick="navigate('pdv')">+ Novo Pedido</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+      <button class="btn btn-gray btn-sm" onclick="toggleOrdersHistory()">${ordersShowHistory?'↩ Voltar ao dia atual':'📚 Ver histórico'}</button>
+      <button class="btn btn-red btn-sm" onclick="startNewOrdersDay()">🌅 Novo dia / Zerar pedidos</button>
+      <button class="btn btn-red" onclick="navigate('pdv')">+ Novo Pedido</button>
+    </div>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-    <button class="cat-tab active" onclick="filterOrders('all',this)">Todos (${allOrders.length})</button>
-    <button class="cat-tab" onclick="filterOrders('pending',this)">⏳ Aguardando (${allOrders.filter(o=>o.status==='pending').length})</button>
-    <button class="cat-tab" onclick="filterOrders('making',this)">🔥 Preparando (${allOrders.filter(o=>o.status==='making').length})</button>
-    <button class="cat-tab" onclick="filterOrders('delivery',this)">🛵 Em Entrega (${allOrders.filter(o=>o.status==='delivery').length})</button>
-    <button class="cat-tab" onclick="filterOrders('ready',this)">✅ Pronto (${allOrders.filter(o=>o.status==='ready').length})</button>
-    <button class="cat-tab" onclick="filterOrders('done',this)">✅ Entregues (${allOrders.filter(o=>o.status==='done').length})</button>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${scopeLabel} · Os pedidos antigos continuam salvos e podem ser consultados no histórico.</div>
+  <div class="cat-tabs" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="cat-tab active" onclick="filterOrders('all',this)">Todos (${visibleOrders.length})</button>
+    <button class="cat-tab" onclick="filterOrders('pending',this)">⏳ Aguardando (${count('pending')})</button>
+    <button class="cat-tab" onclick="filterOrders('making',this)">🔥 Preparando (${count('making')})</button>
+    <button class="cat-tab" onclick="filterOrders('delivery',this)">🛵 Em Entrega (${count('delivery')})</button>
+    <button class="cat-tab" onclick="filterOrders('ready',this)">✅ Pronto (${count('ready')})</button>
+    <button class="cat-tab" onclick="filterOrders('done',this)">✅ Entregues (${count('done')})</button>
   </div>
   <div class="table-box">
     <table class="orders-table"><thead><tr><th>#</th><th>Cliente</th><th>Tipo</th><th>Mesa</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Status</th><th>Criado</th><th>Ações</th></tr></thead>
-    <tbody id="orders-tbody">${renderOrdersRows(allOrders)}</tbody></table>
+    <tbody id="orders-tbody">${renderOrdersRows(visibleOrders)}</tbody></table>
   </div>`;
 }
 
@@ -1360,7 +1414,7 @@ function renderOrdersRows(list){
 function filterOrders(status,btn){
   document.querySelectorAll('.cat-tabs .cat-tab, .page .cat-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  const all=S.get('pp_orders',[]);
+  const all=getOrdersForCurrentView();
   const list=status==='all'?all:all.filter(o=>o.status===status);
   document.getElementById('orders-tbody').innerHTML=renderOrdersRows(list);
 }
