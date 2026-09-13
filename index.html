@@ -716,6 +716,26 @@ function getOrdersForCurrentView(){
   const start=Number(getOrdersDayStart()||0);
   return start?all.filter(o=>getOrderTimestamp(o)>=start):all;
 }
+function getCurrentDayOrders(){
+  const all=S.get('pp_orders',[]),start=Number(getOrdersDayStart()||0);
+  const current=start?all.filter(o=>getOrderTimestamp(o)>=start):all;
+  return current.sort((a,b)=>getOrderTimestamp(a)-getOrderTimestamp(b)||(Number(a.id)||0)-(Number(b.id)||0));
+}
+function getNextDailyOrderNumber(){
+  const start=Number(getOrdersDayStart()||0);
+  if(!start)return nextId(S.get('pp_orders',[]));
+  const current=getCurrentDayOrders();
+  return Math.max(0,...current.map((o,i)=>Number(o.dailyNumber)||i+1))+1;
+}
+function getOrderNumber(order){
+  if(!order)return '-';
+  const start=Number(getOrdersDayStart()||0);
+  if(!start||getOrderTimestamp(order)<start)return order.id;
+  if(Number(order.dailyNumber)>0)return order.dailyNumber;
+  const current=getCurrentDayOrders();
+  const index=current.findIndex(o=>o.id===order.id);
+  return index>=0?index+1:order.id;
+}
 function orderDayStartLabel(){
   const start=Number(getOrdersDayStart()||0);
   return start?new Date(start).toLocaleString('pt-BR'):'ainda não definido';
@@ -1322,6 +1342,7 @@ function submitOrder(){
   const obs=document.getElementById('cart-obs')?.value;
   const newOrder={
     id:nextId(orders),
+    dailyNumber:getNextDailyOrderNumber(),
     client,
     address:addr,
     tableId:orderType==='mesa'?tableId:null,
@@ -1347,7 +1368,7 @@ function submitOrder(){
   cart=[];
   multiPayments = [];
   buildSidebar();
-  alert(`✅ Pedido #${newOrder.id} criado com sucesso!${orderType==='mesa'?' (Mesa '+tableId+')':''}`);
+  alert(`✅ Pedido #${getOrderNumber(newOrder)} criado com sucesso!${orderType==='mesa'?' (Mesa '+tableId+')':''}`);
   navigate('orders');
 }
 
@@ -1392,7 +1413,7 @@ function renderOrdersRows(list){
   return [...list].reverse().map(o=>{
     const payDisp = Array.isArray(o.payment) ? o.payment.map(p=>({dinheiro:'💵',cartao:'💳',pix:'📱'}[p.type]||'')).join('') : (payLabel[o.payment]||'');
     return `<tr>
-    <td><strong>#${o.id}</strong></td>
+    <td><strong>#${getOrderNumber(o)}</strong></td>
     <td>${o.client}</td>
     <td>${typeLabelFull(o)}</td>
     <td>${o.tableId?`<span class="badge badge-dine">Mesa ${o.tableId}</span>`:'-'}</td>
@@ -1463,7 +1484,7 @@ function viewOrder(id){
   if(!o)return;
   const tipoLabel=o.type==='mesa'&&o.tableId?`🪑 Mesa ${o.tableId}`:{delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||o.type;
   openModal(`<div class="modal">
-    <h3>Pedido #${o.id} — ${tipoLabel}</h3>
+    <h3>Pedido #${getOrderNumber(o)} — ${tipoLabel}</h3>
     <p style="color:var(--muted);font-size:13px;margin-bottom:16px">${o.createdAt} — ${o.client}</p>
     <table style="margin-bottom:16px">
       <thead><tr><th>Item</th><th>Tamanho</th><th>Borda</th><th>Qtd</th><th>Preço</th></tr></thead>
@@ -1519,7 +1540,7 @@ function kitchenCard(o,status){
   const mesaInfo=o.tableId?`<span class="badge badge-dine">Mesa ${o.tableId}</span>`:'';
   const typeBadge={delivery:'🛵 Delivery',mesa:'🪑 Mesa',retirada:'🏠 Retirada'}[o.type]||'';
   return `<div class="kitchen-card ${status==='pending'&&(new Date()-new Date(o.createdAt.split(', ').join(' ')))>600000?'urgent':''}">
-    <h4><span>#${o.id} — ${o.client} ${typeBadge} ${mesaInfo}</span>${statusBadge(o.status)}</h4>
+    <h4><span>#${getOrderNumber(o)} — ${o.client} ${typeBadge} ${mesaInfo}</span>${statusBadge(o.status)}</h4>
     <div class="kc-items">${o.items?.map(i=>`• ${i.qty}x ${itemDisplayName(i)} (${i.size||''}${i.border&&i.border!=='Sem Borda'?' | Borda '+i.border:''})`).join('<br>')||''}</div>
     ${o.obs?`<div style="font-size:11px;color:var(--orange);margin-bottom:8px">📝 ${o.obs}</div>`:''}
     <div class="kc-time">⏱ ${o.createdAt}</div>
@@ -1546,7 +1567,7 @@ function delivery(el){
   <div class="delivery-cards">
     ${orders.length===0?'<p style="color:var(--muted)">Nenhuma entrega no momento.</p>':
       [...orders].reverse().map(o=>`<div class="delivery-card ${o.status==='done'?'delivered':''}">
-        <div class="dc-num">#${o.id}</div>
+        <div class="dc-num">#${getOrderNumber(o)}</div>
         <div class="dc-info">
           <div class="dc-name">${o.client} — ${fmt(o.total)}</div>
           <div class="dc-addr">📍 ${o.address||'Sem endereço'}</div>
@@ -1589,7 +1610,7 @@ function clickMesa(id){
   const active=orders.find(o=>o.tableId===id&&['pending','making','delivery','ready'].includes(o.status));
   if(active){
     openModal(`<div class="modal">
-      <h3>🪑 Mesa ${id} — Pedido #${active.id}</h3>
+      <h3>🪑 Mesa ${id} — Pedido #${getOrderNumber(active)}</h3>
       <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Cliente: ${active.client} — ${statusBadge(active.status)}</p>
       <p style="font-size:13px;margin-bottom:20px">Total atual: <strong style="color:var(--red)">${fmt(active.total)}</strong></p>
       <div style="display:flex;gap:10px">
@@ -2165,7 +2186,7 @@ function openAddItemsModal(o){
   const products=S.get('pp_products',[]).filter(p=>p.active),promotions=S.get('pp_promotions',[]).filter(p=>p.active);
   const cats=['Todos',...(promotions.length?['Promoções']:[]),...new Set(products.map(p=>p.category))];
   openModal(`<div class="modal modal-lg" style="width:800px">
-    <h3>➕ Adicionar Itens — Pedido #${o.id} (${o.client})</h3>
+    <h3>➕ Adicionar Itens — Pedido #${getOrderNumber(o)} (${o.client})</h3>
     <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
       <div>
         <input class="product-search" placeholder="🔍 Buscar produto..." oninput="filterAddProducts(this.value)">
@@ -2357,7 +2378,7 @@ function confirmAddItems(){
   addItemsCart=[];
   closeLastModal();
   buildSidebar();
-  alert(`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${o.id}!\nTotal atualizado: ${fmt(o.total)}`);
+  alert(`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${getOrderNumber(o)}!\nTotal atualizado: ${fmt(o.total)}`);
   navigate(currentPage);
 }
 
@@ -2369,7 +2390,7 @@ function checkoutOrder(id){
   if(!o)return;
   checkoutTotal=o.total||0;
   checkoutPayments = Array.isArray(o.payment) ? [...o.payment] : [];
-  const title = o.type === 'mesa' ? `Fechar Comanda — Mesa ${o.tableId}` : `Concluir Pedido #${o.id}`;
+  const title = o.type === 'mesa' ? `Fechar Comanda — Mesa ${o.tableId}` : `Concluir Pedido #${getOrderNumber(o)}`;
   openModal(`<div class="modal">
     <h3>💰 ${title}</h3>
     <p style="margin-bottom:12px">Cliente: <strong>${o.client}</strong></p>
@@ -2455,7 +2476,7 @@ function printOrder(id){
     ${sett.companyPhone ? `<p style="text-align:center; font-size:12px">Tel: ${sett.companyPhone}</p>` : ''}
     ${sett.companyAddress ? `<p style="text-align:center; font-size:12px">${sett.companyAddress}</p>` : ''}
     <hr style="border:1px dashed #000; margin:10px 0">
-    <p style="text-align:center">Pedido #${o.id} - ${tipoLabel}</p>
+    <p style="text-align:center">Pedido #${getOrderNumber(o)} - ${tipoLabel}</p>
     <p>Data: ${o.createdAt}</p>
     <p>Cliente: ${o.client}</p>
     ${o.address ? `<p>Endereço: ${o.address}</p>` : ''}
