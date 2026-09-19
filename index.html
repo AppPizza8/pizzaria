@@ -2543,6 +2543,11 @@ function printOrder(id){
       <td style="width:30%; text-align:right">${fmt(i.price)}</td>
     </tr>
   `).join('');
+  const printedSubtotal=Number(o.subtotal)||((o.items||[]).reduce((s,i)=>s+(Number(i.price)||0),0));
+  const printedDiscount=Number(o.discountAmount)||0;
+  const printedDiscountLabel=o.discountType==='percent'&&Number(o.discountInput)>0
+    ? `Desconto (${Number(o.discountInput)}%)`
+    : 'Desconto';
 
   const sett = S.get('pp_settings', {});
   printEl.innerHTML = `
@@ -2568,6 +2573,7 @@ function printOrder(id){
         ${itemsHtml}
       </tbody>
     </table>
+    ${printedDiscount>0?`<div style="border-top:1px dashed #000;margin-top:8px;padding-top:6px"><p>Subtotal: ${fmt(printedSubtotal)}</p><p>${printedDiscountLabel}: - ${fmt(printedDiscount)}</p></div>`:''}
     <div class="total-row">TOTAL: ${fmt(o.total)}</div>
     <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : (Array.isArray(o.payment) ? o.payment.map(p => `${p.type.toUpperCase()}: ${fmt(p.value)}${p.change>0?' (Troco: '+fmt(p.change)+')':''}`).join(' | ') : o.payment.toUpperCase())}</p>
     <div class="footer">
