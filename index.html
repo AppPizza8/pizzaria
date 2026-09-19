@@ -767,6 +767,18 @@ function itemDisplayName(item){
   }
   return item?.name||'Item';
 }
+function rankingMarkup(items,maxCount,emptyText){
+  if(!items.length)return `<p style="color:var(--muted);font-size:13px">${emptyText}</p>`;
+  return items.map(([name,count],i)=>`
+    <div class="rank-item">
+      <div class="rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
+      <div class="rank-bar-wrap">
+        <div class="rank-name">${name}</div>
+        <div class="rank-bar" style="width:${Math.round(count/maxCount*100)}%"></div>
+      </div>
+      <div class="rank-count">${count}x</div>
+    </div>`).join('');
+}
 function paymentContext(receivedId){
   const checkout=receivedId==='chk-received';
   const list=checkout?checkoutPayments:multiPayments;
@@ -859,11 +871,26 @@ function dashboard(el){
     last7.push(orders.filter(o=>o.status==='done'&&o.createdAt?.includes(ds)).reduce((s,o)=>s+(o.total||0),0));
   }
 
-  // Top products
-  const itemCounts={};
-  orders.forEach(o=>o.items?.forEach(i=>{const label=itemDisplayName(i);itemCounts[label]=(itemCounts[label]||0)+i.qty;}));
-  const topItems=Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const maxCount=topItems[0]?.[1]||1;
+  // Rankings separados: pizzas por sabor + tamanho e refrigerantes/bebidas.
+  const pizzaCounts={},drinkCounts={};
+  orders.forEach(o=>o.items?.forEach(i=>{
+    if(i?.isPromotion)return;
+    const category=String(i.category||'').toLowerCase();
+    const pizza=category==='pizza'||['tradicionais','clássicas','especiais'].includes(category);
+    const drink=category==='bebida'||/coca|cajuína|cajuina/i.test(String(i.name||''));
+    if(pizza){
+      const size=i.size&&i.size!=='Promoção'?i.size:'Tamanho não informado';
+      const label=`${itemDisplayName(i)} · ${size}`;
+      pizzaCounts[label]=(pizzaCounts[label]||0)+(Number(i.qty)||0);
+    }else if(drink){
+      const label=itemDisplayName(i);
+      drinkCounts[label]=(drinkCounts[label]||0)+(Number(i.qty)||0);
+    }
+  }));
+  const topPizzas=Object.entries(pizzaCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topDrinks=Object.entries(drinkCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxPizzaCount=topPizzas[0]?.[1]||1;
+  const maxDrinkCount=topDrinks[0]?.[1]||1;
 
   el.innerHTML=`
   <div class="page-header">
@@ -910,18 +937,14 @@ function dashboard(el){
       <canvas id="chart7" height="200"></canvas>
     </div>
     <div class="chart-box">
-      <h3>🏆 Pizzas Mais Vendidas</h3>
-      <div class="ranking-list" id="ranking-list">
-        ${topItems.length===0?'<p style="color:var(--muted);font-size:13px">Nenhum pedido ainda</p>':
-          topItems.map(([name,count],i)=>`
-          <div class="rank-item">
-            <div class="rank-num ${i===0?'gold':i===1?'silver':i===2?'bronze':''}">${i+1}</div>
-            <div class="rank-bar-wrap">
-              <div class="rank-name">${name}</div>
-              <div class="rank-bar" style="width:${Math.round(count/maxCount*100)}%"></div>
-            </div>
-            <div class="rank-count">${count}x</div>
-          </div>`).join('')}
+      <h3>🍕 Pizzas Mais Vendidas por Tamanho</h3>
+      <div class="ranking-list" id="pizza-ranking-list">
+        ${rankingMarkup(topPizzas,maxPizzaCount,'Nenhuma pizza vendida ainda')}
+      </div>
+      <div style="border-top:1px solid var(--border);margin:18px 0 16px"></div>
+      <h3>🥤 Refrigerantes Mais Vendidos</h3>
+      <div class="ranking-list" id="drink-ranking-list">
+        ${rankingMarkup(topDrinks,maxDrinkCount,'Nenhum refrigerante vendido ainda')}
       </div>
     </div>
   </div>`;
@@ -989,6 +1012,8 @@ function pdv(el){
       <div class="cart-items" id="cart-items"><p style="color:var(--muted);font-size:13px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
       <div class="cart-total-box">
         <div class="cart-total-row"><span style="color:var(--muted)">Subtotal</span><span id="cart-sub">R$ 0,00</span></div>
+        <div class="cart-total-row" style="align-items:center;gap:6px"><span style="color:var(--muted)">Desconto</span><span style="display:flex;gap:4px;align-items:center"><select id="cart-discount-type" style="padding:4px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px" onchange="updateCartTotal()"><option value="value">R$</option><option value="percent">%</option></select><input id="cart-discount-value" type="number" min="0" step="0.01" placeholder="0" style="width:70px;padding:4px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px" oninput="updateCartTotal()"></span></div>
+        <div class="cart-total-row" id="cart-discount-row" style="display:none;color:var(--green);font-size:12px"><span>Desconto aplicado</span><span id="cart-discount-amount">R$ 0,00</span></div>
         <div class="cart-total-row big"><span>Total</span><span id="cart-total-val" style="color:var(--red)">R$ 0,00</span></div>
         <textarea class="cart-obs" id="cart-obs" rows="2" placeholder="Observações do pedido..."></textarea>
         
@@ -1283,11 +1308,18 @@ function renderCart(){
 function removeCart(i){cart.splice(i,1);renderCart();}
 
 function updateCartTotal(){
-  const total=cart.reduce((s,c)=>s+c.price,0);
+  const subtotal=cart.reduce((s,c)=>s+c.price,0);
+  const discountType=document.getElementById('cart-discount-type')?.value||'value';
+  const raw=Math.max(0,parseFloat(document.getElementById('cart-discount-value')?.value)||0);
+  const discountAmount=Math.min(subtotal,discountType==='percent'?subtotal*Math.min(100,raw)/100:raw);
+  const total=Math.max(0,subtotal-discountAmount);
   const sub=document.getElementById('cart-sub');
   const tot=document.getElementById('cart-total-val');
-  if(sub) sub.textContent=fmt(total);
+  if(sub) sub.textContent=fmt(subtotal);
   if(tot) tot.textContent=fmt(total);
+  const discountRow=document.getElementById('cart-discount-row');
+  if(discountRow) discountRow.style.display=discountAmount>0?'flex':'none';
+  if(document.getElementById('cart-discount-amount')) document.getElementById('cart-discount-amount').textContent=fmt(discountAmount);
   if(document.getElementById('pdv-received')) updateChange('pdv-received','add-pay-val','pdv-change-val');
   if(document.getElementById('pay-remain')) renderMultiPayments('multi-pay-list','pay-remain',multiPayments,null);
 }
@@ -1331,7 +1363,11 @@ function submitOrder(){
   if(orderType==='delivery'&&!addr){alert('Informe o endereço de entrega');return;}
   if(orderType==='mesa'&&!tableId){alert('Selecione a mesa');return;}
   
-  const total=cart.reduce((s,c)=>s+c.price,0);
+  const subtotal=cart.reduce((s,c)=>s+c.price,0);
+  const discountType=document.getElementById('cart-discount-type')?.value||'value';
+  const discountInput=Math.max(0,parseFloat(document.getElementById('cart-discount-value')?.value)||0);
+  const discountAmount=Math.min(subtotal,discountType==='percent'?subtotal*Math.min(100,discountInput)/100:discountInput);
+  const total=Math.max(0,subtotal-discountAmount);
   const paid = multiPayments.reduce((s,p)=>s+p.value,0);
   
   if(orderType !== 'mesa' && paid < total) {
@@ -1348,7 +1384,7 @@ function submitOrder(){
     tableId:orderType==='mesa'?tableId:null,
     type:orderType,
     items:cart.map(c=>({...c})),
-    total,
+    subtotal,discountType,discountInput,discountAmount,total,
     payment: orderType==='mesa' ? 'Aberto' : (multiPayments.length > 0 ? multiPayments : 'Pendente'),
     obs,
     status:'pending',
@@ -1424,7 +1460,7 @@ function renderOrdersRows(list){
     <td style="font-size:12px;color:var(--muted)">${o.createdAt}</td>
     <td class="row-actions">
       ${o.status!=='done'&&o.status!=='cancelled'?(o.status==='ready'||o.status==='delivery'?`<button class="btn btn-green btn-xs" onclick="checkoutOrder(${o.id})">💰 Concluir</button>`:`<button class="btn btn-blue btn-xs" onclick="advanceOrder(${o.id})">Avançar →</button>`):''}
-      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="addItemToOrder(${o.id})">➕</button>`:''}
+      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3)" onclick="addItemToOrder(${o.id})">✏️ Alterar</button>`:''}
       <button class="btn btn-gray btn-xs" onclick="viewOrder(${o.id})">👁</button>
       ${currentUser.role==='admin'||currentUser.role==='gerente'?`<button class="btn btn-xs" style="background:rgba(230,57,70,.15);color:var(--red);border:1px solid rgba(230,57,70,.3)" onclick="cancelOrder(${o.id})">✕</button>`:''}
     </td>
@@ -1495,12 +1531,13 @@ function viewOrder(id){
     <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid var(--border);padding-top:12px">
       <span>Total</span><span style="color:var(--red)">${fmt(o.total)}</span>
     </div>
+    ${Number(o.discountAmount)>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--green);margin-top:6px"><span>Desconto${o.discountType==='percent'?` (${o.discountInput}%)`:''}</span><span>- ${fmt(o.discountAmount)}</span></div>`:''}
     ${o.obs?`<p style="margin-top:10px;font-size:13px;color:var(--muted)">📝 ${o.obs}</p>`:''}
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
     ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
     <div class="modal-footer">
 	      <button class="btn btn-blue" onclick="printOrder(${o.id})">🖨️ Imprimir Cupom</button>
-	      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue" onclick="closeModal();addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
+      ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-blue" onclick="closeModal();addItemToOrder(${o.id})">✏️ Alterar Itens</button>`:''}
 	      <button class="btn btn-gray" onclick="closeModal()">Fechar</button>
 	    </div>
   </div>`);
@@ -1549,7 +1586,7 @@ function kitchenCard(o,status){
       ${status==='making'?`<button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="advanceOrder(${o.id})">✅ Pronto</button>`:''}
       ${status==='delivery'?`<span style="color:var(--green);font-size:12px;font-weight:600">Aguardando entregador</span>`:''}
       ${status==='ready'?`<button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="checkoutOrder(${o.id})">💰 Concluir ${o.type==='mesa'?'Mesa':'Retirada'}</button>`:''}
-      ${status!=='done'&&status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:6px;justify-content:center;width:100%" onclick="addItemToOrder(${o.id})">➕ Adicionar Itens</button>`:''}
+      ${status!=='done'&&status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:6px;justify-content:center;width:100%" onclick="addItemToOrder(${o.id})">✏️ Alterar Itens</button>`:''}
     </div>
   </div>`;
 }
@@ -1576,7 +1613,7 @@ function delivery(el){
         <div style="text-align:right">
           ${statusBadge(o.status)}<br><br>
           ${o.status==='delivery'?`<button class="btn btn-green btn-sm" onclick="checkoutOrder(${o.id})">💰 Concluir Entrega</button><br>`:''}
-          ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:4px" onclick="addItemToOrder(${o.id})">➕ Itens</button>`:''}
+          ${o.status!=='done'&&o.status!=='cancelled'?`<button class="btn btn-xs" style="background:rgba(139,92,246,.15);color:#a78bfa;border:1px solid rgba(139,92,246,.3);margin-top:4px" onclick="addItemToOrder(${o.id})">✏️ Alterar</button>`:''}
         </div>
       </div>`).join('')}
   </div>`;
@@ -1615,7 +1652,7 @@ function clickMesa(id){
       <p style="font-size:13px;margin-bottom:20px">Total atual: <strong style="color:var(--red)">${fmt(active.total)}</strong></p>
       <div style="display:flex;gap:10px">
         <button class="btn btn-gray" style="flex:1;justify-content:center" onclick="closeModal();viewOrder(${active.id})">👁 Ver Pedido</button>
-        <button class="btn btn-blue" style="flex:1;justify-content:center" onclick="closeModal();addItemToOrder(${active.id})">➕ Itens</button>
+        <button class="btn btn-blue" style="flex:1;justify-content:center" onclick="closeModal();addItemToOrder(${active.id})">✏️ Alterar</button>
         <button class="btn btn-green" style="flex:1;justify-content:center;background:var(--green)" onclick="closeModal();checkoutOrder(${active.id})">💰 Fechar</button>
       </div>
       <div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Voltar</button></div>
@@ -2172,13 +2209,15 @@ function saveAccount(){
 // ============ ADD ITEMS TO ORDER (Modal-based, works from any page/role) ============
 let addItemsOrderId=null;
 let addItemsCart=[];
+let editingOrderItems=false;
 
 function addItemToOrder(id){
   const o=S.get('pp_orders',[]).find(x=>x.id===id);
   if(!o)return;
   if(o.status==='done'||o.status==='cancelled'){alert('Este pedido já foi concluído/cancelado');return;}
   addItemsOrderId=id;
-  addItemsCart=[];
+  addItemsCart=(o.items||[]).map(i=>({...i}));
+  editingOrderItems=true;
   openAddItemsModal(o);
 }
 
@@ -2186,7 +2225,7 @@ function openAddItemsModal(o){
   const products=S.get('pp_products',[]).filter(p=>p.active),promotions=S.get('pp_promotions',[]).filter(p=>p.active);
   const cats=['Todos',...(promotions.length?['Promoções']:[]),...new Set(products.map(p=>p.category))];
   openModal(`<div class="modal modal-lg" style="width:800px">
-    <h3>➕ Adicionar Itens — Pedido #${getOrderNumber(o)} (${o.client})</h3>
+    <h3>${editingOrderItems?'✏️ Alterar Pedido':'➕ Adicionar Itens'} — Pedido #${getOrderNumber(o)} (${o.client})</h3>
     <div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
       <div>
         <input class="product-search" placeholder="🔍 Buscar produto..." oninput="filterAddProducts(this.value)">
@@ -2202,17 +2241,17 @@ function openAddItemsModal(o){
         </div>
       </div>
       <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px;max-height:400px;overflow-y:auto">
-        <h4 style="font-size:13px;margin-bottom:10px;color:var(--muted)">🛒 Novos Itens</h4>
+        <h4 style="font-size:13px;margin-bottom:10px;color:var(--muted)">🛒 Itens do Pedido</h4>
         <div id="add-cart-items"><p style="color:var(--muted);font-size:12px;text-align:center;margin-top:20px">Nenhum item adicionado</p></div>
         <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;font-weight:700">
-          <span>Total adicional:</span>
+          <span>${editingOrderItems?'Total atual:':'Total adicional:'}</span>
           <span id="add-cart-total" style="color:var(--red)">R$ 0,00</span>
         </div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeAddItemsModal()">Cancelar</button>
-      <button class="btn btn-green" onclick="confirmAddItems()" style="background:var(--green)">✅ Confirmar Adição</button>
+      <button class="btn btn-green" onclick="confirmAddItems()" style="background:var(--green)">✅ ${editingOrderItems?'Salvar Alterações':'Confirmar Adição'}</button>
     </div>
   </div>`);
 }
@@ -2356,6 +2395,7 @@ function removeAddItem(i){addItemsCart.splice(i,1);renderAddCart();}
 function closeAddItemsModal(){
   addItemsOrderId=null;
   addItemsCart=[];
+  editingOrderItems=false;
   closeModal();
 }
 
@@ -2366,9 +2406,17 @@ function confirmAddItems(){
   const o=orders.find(x=>x.id===addItemsOrderId);
   if(!o){alert('Pedido não encontrado');closeModal();return;}
   const newTotal=addItemsCart.reduce((s,c)=>s+c.price,0);
-  // Append new items
-  o.items=o.items.concat(addItemsCart.map(c=>({...c})));
-  o.total=(o.total||0)+newTotal;
+  if(editingOrderItems){
+    o.items=addItemsCart.map(c=>({...c}));
+    o.subtotal=newTotal;
+    const dType=o.discountType||'value', dInput=Math.max(0,Number(o.discountInput)||0);
+    o.discountAmount=Math.min(newTotal,dType==='percent'?newTotal*Math.min(100,dInput)/100:dInput);
+    o.total=Math.max(0,newTotal-o.discountAmount);
+  } else {
+    o.items=o.items.concat(addItemsCart.map(c=>({...c})));
+    o.subtotal=(o.subtotal||o.total||0)+newTotal;
+    o.total=(o.total||0)+newTotal;
+  }
   // If order was already in making/delivery/ready, reset to pending so kitchen sees it
   if(['making','delivery','ready'].includes(o.status)){
     o.status='pending';
@@ -2376,9 +2424,11 @@ function confirmAddItems(){
   S.set('pp_orders',orders);
   addItemsOrderId=null;
   addItemsCart=[];
+  const wasEditing=editingOrderItems;
+  editingOrderItems=false;
   closeLastModal();
   buildSidebar();
-  alert(`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${getOrderNumber(o)}!\nTotal atualizado: ${fmt(o.total)}`);
+  alert(wasEditing?`✅ Pedido #${getOrderNumber(o)} alterado!\nTotal atualizado: ${fmt(o.total)}`:`✅ ${fmt(newTotal)} em novos itens adicionados ao Pedido #${getOrderNumber(o)}!\nTotal atualizado: ${fmt(o.total)}`);
   navigate(currentPage);
 }
 
@@ -2396,8 +2446,9 @@ function checkoutOrder(id){
     <p style="margin-bottom:12px">Cliente: <strong>${o.client}</strong></p>
     <div style="background:var(--card2);padding:16px;border-radius:10px;margin-bottom:20px;text-align:center">
       <div style="font-size:14px;color:var(--muted)">Total a Pagar</div>
-      <div style="font-size:32px;font-weight:800;color:var(--red)">${fmt(o.total)}</div>
+      <div style="font-size:32px;font-weight:800;color:var(--red)" id="checkout-total-val">${fmt(o.total)}</div>
     </div>
+    <div class="form-row" style="margin-bottom:14px"><label>Desconto no fechamento</label><div style="display:flex;gap:6px"><select id="checkout-discount-type" style="width:90px;padding:7px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text)" onchange="updateCheckoutTotal(${id})"><option value="value">R$</option><option value="percent">%</option></select><input id="checkout-discount-value" type="number" min="0" step="0.01" placeholder="0" style="flex:1;padding:7px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text)" oninput="updateCheckoutTotal(${id})"></div><div id="checkout-discount-note" style="font-size:11px;color:var(--green);margin-top:5px"></div></div>
     
     <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">PAGAMENTO</p>
     <div id="checkout-pay-list" style="margin-bottom:10px"></div>
@@ -2428,17 +2479,34 @@ function checkoutOrder(id){
   toggleChangeCalc('chk-pay-type','chk-change-calc');
 }
 
+function updateCheckoutTotal(id){
+  const o=S.get('pp_orders',[]).find(x=>x.id===id);if(!o)return;
+  const base=Number(o.subtotal)||((o.items||[]).reduce((s,i)=>s+(Number(i.price)||0),0));
+  const type=document.getElementById('checkout-discount-type')?.value||'value';
+  const input=Math.max(0,Number(document.getElementById('checkout-discount-value')?.value)||0);
+  const amount=Math.min(base,type==='percent'?base*Math.min(100,input)/100:input);
+  checkoutTotal=Math.max(0,base-amount);
+  const totalEl=document.getElementById('checkout-total-val');if(totalEl)totalEl.textContent=fmt(checkoutTotal);
+  const note=document.getElementById('checkout-discount-note');if(note)note.textContent=amount?`Desconto aplicado: ${fmt(amount)}`:'';
+  renderMultiPayments('checkout-pay-list','chk-pay-remain',checkoutPayments,checkoutTotal);
+}
+
 function finishTableOrder(id){
   const orders = S.get('pp_orders',[]);
   const o = orders.find(x=>x.id===id);
   if(!o) return;
   
   const paid = checkoutPayments.reduce((s,p)=>s+p.value,0);
-  if(paid < o.total) {
-    if(!confirm(`O valor pago (${fmt(paid)}) é menor que o total (${fmt(o.total)}). Confirmar mesmo assim?`)) return;
+  if(paid < checkoutTotal) {
+    if(!confirm(`O valor pago (${fmt(paid)}) é menor que o total (${fmt(checkoutTotal)}). Confirmar mesmo assim?`)) return;
   }
   
   o.payment = checkoutPayments.length > 0 ? checkoutPayments : 'Pendente';
+  o.subtotal=o.subtotal||((o.items||[]).reduce((s,i)=>s+(Number(i.price)||0),0));
+  o.discountType=document.getElementById('checkout-discount-type')?.value||o.discountType||'value';
+  o.discountInput=Math.max(0,Number(document.getElementById('checkout-discount-value')?.value)||0);
+  o.discountAmount=Math.min(o.subtotal,o.discountType==='percent'?o.subtotal*Math.min(100,o.discountInput)/100:o.discountInput);
+  o.total=checkoutTotal;
   o.status = 'done';
   
   // Se for mesa, libera ela
