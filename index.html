@@ -779,10 +779,17 @@ function rankingMarkup(items,maxCount,emptyText){
       <div class="rank-count">${count}x</div>
     </div>`).join('');
 }
+function getCurrentPdvTotal(){
+  const subtotal=cart.reduce((s,c)=>s+c.price,0);
+  const type=document.getElementById('cart-discount-type')?.value||'value';
+  const input=Math.max(0,parseFloat(document.getElementById('cart-discount-value')?.value)||0);
+  const discount=Math.min(subtotal,type==='percent'?subtotal*Math.min(100,input)/100:input);
+  return Math.max(0,subtotal-discount);
+}
 function paymentContext(receivedId){
   const checkout=receivedId==='chk-received';
   const list=checkout?checkoutPayments:multiPayments;
-  const total=checkout?checkoutTotal:cart.reduce((s,c)=>s+c.price,0);
+  const total=checkout?checkoutTotal:getCurrentPdvTotal();
   const paid=list.reduce((s,p)=>s+(Number(p.value)||0),0);
   return {total,paid,remaining:Math.max(0,total-paid)};
 }
@@ -1065,7 +1072,7 @@ function addPaymentRow(containerId = 'multi-pay-list', valId = 'add-pay-val', ty
   const receivedId=containerId==='multi-pay-list'?'pdv-received':'chk-received';
   const received=type==='dinheiro'?(parseFloat(document.getElementById(receivedId)?.value)||val):val;
   const currentPaid=targetList.reduce((s,p)=>s+(Number(p.value)||0),0);
-  const total=totalToCover!==null&&totalToCover!==undefined?totalToCover:(containerId==='checkout-pay-list'?checkoutTotal:cart.reduce((s,c)=>s+c.price,0));
+  const total=totalToCover!==null&&totalToCover!==undefined?totalToCover:(containerId==='checkout-pay-list'?checkoutTotal:getCurrentPdvTotal());
   const remainingBefore=Math.max(0,total-currentPaid);
   const appliedValue=Math.min(val,remainingBefore);
   if(appliedValue<=0)return;
@@ -1082,7 +1089,7 @@ function addPaymentRow(containerId = 'multi-pay-list', valId = 'add-pay-val', ty
 }
 
 function renderMultiPayments(containerId, remainId, targetList, totalToCover) {
-  const total = cart.reduce((s,c)=>s+c.price,0);
+  const total = getCurrentPdvTotal();
   const toCover = totalToCover !== null ? totalToCover : (containerId==='checkout-pay-list'?checkoutTotal:total);
   const paid = targetList.reduce((s,p)=>s+p.value,0);
   const remain = Math.max(0, toCover - paid);
