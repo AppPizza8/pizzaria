@@ -694,6 +694,7 @@ function navigate(page){
   if(btn) btn.classList.add('active');
   document.getElementById('page-title').textContent=PAGE_TITLES[page]||page;
   const el=document.getElementById('main-content');
+  el.classList.remove('mobile-pdv-page');
   el.innerHTML='';
   ({dashboard,pdv,mobileOrders,orders,tables,delivery,kitchen,products,borders,clients,drivers,users,financeiro,account})[page]?.(el);
 }
