@@ -273,6 +273,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .finance-scroll table{min-width:640px}
 .finance-action-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
 .finance-muted{font-size:12px;color:var(--muted)}
+.mobile-pdv-page .pdv-layout{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.mobile-pdv-page .pdv-products,.mobile-pdv-page .pdv-cart{width:100%;padding:14px}
+.mobile-pdv-page .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.mobile-pdv-page .product-card{padding:11px 8px}
+.mobile-pdv-page .pdv-cart{min-height:500px}
 @media(max-width:900px){.finance-grid-2,.finance-grid-3{grid-template-columns:1fr}.finance-shell{max-width:100%}.finance-section{padding:14px}.finance-scroll table{min-width:600px}}
 
 @media(max-width:900px){
@@ -360,7 +365,7 @@ const S = {
 // FIREBASE SYNC — opcional. Ativa para multi-dispositivo
 // ============================================================
 let firebaseDb=null,useFirebase=false,lastSyncAt=0;
-const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings','pp_promotions','pp_orders_day_start'];
+const SYNC_KEYS=['pp_users','pp_clients','pp_products','pp_borders','pp_orders','pp_tables','pp_movements','pp_v2','pp_finance_settings','pp_finance_movements','pp_finance_accounts','pp_finance_purchases','pp_finance_reserves','pp_finance_closings','pp_finance_cash','pp_promotions','pp_orders_day_start'];
 
 function setupFirebase(config){
   try{
@@ -400,7 +405,7 @@ function onRemoteChange(key){
   if(key==='pp_orders'){
     // Recarregar badges e página se houver mudança nos pedidos
     buildSidebar();
-    if(['orders','pdv','dashboard','kitchen','delivery','tables'].includes(page)) navigate(page);
+    if(['orders','pdv','mobileOrders','dashboard','kitchen','delivery','tables'].includes(page)) navigate(page);
   }
   else if(key==='pp_orders_day_start'){
     // O início do dia é uma preferência da tela de Pedidos, não apaga pedidos.
@@ -489,6 +494,7 @@ function initData(){
   if(!S.get('pp_finance_purchases',null)) S.set('pp_finance_purchases',[]);
   if(!S.get('pp_finance_reserves',null)) S.set('pp_finance_reserves',[]);
   if(!S.get('pp_finance_closings',null)) S.set('pp_finance_closings',[]);
+  if(!S.get('pp_finance_cash',null)) S.set('pp_finance_cash',{openingCash:0,openingPix:0,movements:[]});
   if(!S.get('pp_promotions',null)) S.set('pp_promotions',[]);
   const defaultBorders=[
     {id:1,name:'Sem Borda',price:0},
@@ -549,12 +555,16 @@ function initData(){
      sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
     {id:17,name:'Camarão com Creme Cheese',category:'Especiais',description:'Creme cheese, mussarela, filé de camarão refogado no alho e óleo, cebola',active:true,
      sizes:[{name:'P',price:32.00},{name:'M',price:55.00},{name:'G',price:65.00}]},
+    {id:26,name:'Mussarela',category:'Tradicionais',description:'Molho, mussarela, tomate e orégano',active:true,
+     sizes:[{name:'P',price:28.00},{name:'M',price:48.00},{name:'G',price:58.00}]},
 
     // BEBIDAS
     {id:18,name:'Cajuína 1L',category:'Bebida',description:'Cajuína garrafa 1 litro',active:true,sizes:[{name:'1L',price:11.00}]},
     {id:19,name:'Coca-Cola 1L',category:'Bebida',description:'Coca-Cola garrafa 1 litro',active:true,sizes:[{name:'1L',price:11.00}]},
     {id:20,name:'Cajuína 2L',category:'Bebida',description:'Cajuína garrafa 2 litros',active:true,sizes:[{name:'2L',price:16.00}]},
     {id:21,name:'Coca-Cola 2L',category:'Bebida',description:'Coca-Cola garrafa 2 litros',active:true,sizes:[{name:'2L',price:16.00}]},
+    {id:27,name:'Água com gás',category:'Bebida',description:'Água mineral com gás',active:true,sizes:[{name:'Unidade',price:3.00}]},
+    {id:28,name:'Água sem gás',category:'Bebida',description:'Água mineral sem gás',active:true,sizes:[{name:'Unidade',price:2.00}]},
 
     // SALGADOS
     {id:22,name:'Coxinha de Frango',category:'Salgado',description:'Coxinha recheada com frango',active:true,sizes:[{name:'Unidade',price:6.00}]},
@@ -612,6 +622,7 @@ function defaultPage(r){return{admin:'dashboard',gerente:'dashboard',caixa:'pdv'
 const ALL_PAGES = {
   dashboard: {icon:'📊',label:'Dashboard',section:'PRINCIPAL'},
   pdv:       {icon:'🖥️',label:'PDV / Novo Pedido',section:'PRINCIPAL'},
+  mobileOrders:{icon:'📱',label:'Pedidos pelo Celular',section:'PRINCIPAL'},
   orders:    {icon:'🧾',label:'Pedidos',section:'PRINCIPAL',badge:'orders'},
   tables:    {icon:'🪑',label:'Mesas',section:'PRINCIPAL'},
   delivery:  {icon:'🛵',label:'Delivery',section:'PRINCIPAL'},
@@ -627,9 +638,9 @@ const ALL_PAGES = {
 };
 
 const ROLE_PAGES = {
-  admin:      ['dashboard','pdv','orders','tables','delivery','kitchen','products','borders','clients','drivers','users','financeiro','settings','account'],
-  gerente:    ['dashboard','pdv','orders','tables','delivery','kitchen','products','clients','financeiro','account'],
-  caixa:      ['pdv','orders','tables','delivery','kitchen','account'],
+  admin:      ['dashboard','pdv','mobileOrders','orders','tables','delivery','kitchen','products','borders','clients','drivers','users','financeiro','settings','account'],
+  gerente:    ['dashboard','pdv','mobileOrders','orders','tables','delivery','kitchen','products','clients','financeiro','account'],
+  caixa:      ['pdv','mobileOrders','orders','tables','delivery','kitchen','account'],
   entregador: ['delivery','account'],
   cozinha:    ['kitchen','account'],
 };
@@ -669,7 +680,7 @@ function toggleSidebar(){
 }
 
 let currentPage='';
-const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',settings:'Configurações',account:'Minha Conta'};
+const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',mobileOrders:'Pedidos pelo Celular',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',settings:'Configurações',account:'Minha Conta'};
 
 let editingOrderId=null;
 let financeUnlockedSession=false;
@@ -684,7 +695,7 @@ function navigate(page){
   document.getElementById('page-title').textContent=PAGE_TITLES[page]||page;
   const el=document.getElementById('main-content');
   el.innerHTML='';
-  ({dashboard,pdv,orders,tables,delivery,kitchen,products,borders,clients,drivers,users,financeiro,account})[page]?.(el);
+  ({dashboard,pdv,mobileOrders,orders,tables,delivery,kitchen,products,borders,clients,drivers,users,financeiro,account})[page]?.(el);
 }
 
 // ============================================================
@@ -784,7 +795,10 @@ function getCurrentPdvTotal(){
   const type=document.getElementById('cart-discount-type')?.value||'value';
   const input=Math.max(0,parseFloat(document.getElementById('cart-discount-value')?.value)||0);
   const discount=Math.min(subtotal,type==='percent'?subtotal*Math.min(100,input)/100:input);
-  return Math.max(0,subtotal-discount);
+  const addType=document.getElementById('cart-addition-type')?.value||'value';
+  const addInput=Math.max(0,parseFloat(document.getElementById('cart-addition-value')?.value)||0);
+  const addition=addType==='percent'?subtotal*Math.min(100,addInput)/100:addInput;
+  return Math.max(0,subtotal-discount+addition);
 }
 function paymentContext(receivedId){
   const checkout=receivedId==='chk-received';
@@ -858,25 +872,10 @@ function openModal(html){
 // ============================================================
 function dashboard(el){
   const orders=S.get('pp_orders',[]);
-  const todayStr=today();
-  const todayOrders=orders.filter(o=>o.createdAt&&o.createdAt.includes(todayStr));
-  const monthOrders=orders.filter(o=>o.createdAt&&o.createdAt.includes(new Date().toLocaleDateString('pt-BR').slice(3)));
-  const todaySales=todayOrders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.total||0),0);
-  const monthSales=monthOrders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.total||0),0);
-  const costs=monthSales*0.45;
-  const profit=monthSales-costs;
   const active=orders.filter(o=>['pending','making','delivery','ready'].includes(o.status)).length;
   const delivered=orders.filter(o=>o.status==='done').length;
   const cancelled=orders.filter(o=>o.status==='cancelled').length;
-
-  // Last 7 days
-  const last7=[];const labels7=[];
-  for(let i=6;i>=0;i--){
-    const d=new Date();d.setDate(d.getDate()-i);
-    const ds=d.toLocaleDateString('pt-BR');
-    labels7.push(['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]);
-    last7.push(orders.filter(o=>o.status==='done'&&o.createdAt?.includes(ds)).reduce((s,o)=>s+(o.total||0),0));
-  }
+  const productsSold=orders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.items||[]).reduce((t,i)=>t+(Number(i.qty)||0),0),0);
 
   // Rankings separados: pizzas por sabor + tamanho e refrigerantes/bebidas.
   const pizzaCounts={},drinkCounts={};
@@ -901,7 +900,7 @@ function dashboard(el){
 
   el.innerHTML=`
   <div class="page-header">
-    <h2>Dashboard</h2>
+    <h2>👋 Bem-vindo à Pizzaria Patrício</h2>
     <div style="display:flex;gap:8px">
       <select style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:13px">
         <option>Este Mês</option><option>Esta Semana</option><option>Hoje</option>
@@ -909,24 +908,16 @@ function dashboard(el){
       <button class="btn btn-red btn-sm" onclick="navigate('pdv')">+ Novo Pedido</button>
     </div>
   </div>
-  <div class="page-sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+  <div class="page-sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Visão operacional</div>
 
   <div class="metric-grid">
     <div class="metric-card">
-      <div class="metric-icon" style="background:rgba(251,133,0,.15)">💰</div>
-      <div><div class="metric-val">${fmt(todaySales)}</div><div class="metric-label">Vendas Hoje</div><div class="metric-sub" style="color:var(--muted)">${todayOrders.filter(o=>o.status==='done').length} pedidos</div></div>
+      <div class="metric-icon" style="background:rgba(251,133,0,.15)">🍽️</div>
+      <div><div class="metric-val">${productsSold}</div><div class="metric-label">Produtos vendidos</div><div class="metric-sub" style="color:var(--muted)">Pedidos concluídos</div></div>
     </div>
     <div class="metric-card">
       <div class="metric-icon" style="background:rgba(31,111,235,.15)">📋</div>
-      <div><div class="metric-val">${fmt(monthSales)}</div><div class="metric-label">Faturamento do Mês</div><div class="metric-sub" style="color:var(--green)">↑ ${monthOrders.filter(o=>o.status==='done').length} pedidos</div></div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-icon" style="background:rgba(${profit>=0?'46,160,67':'230,57,70'},.15)">${profit>=0?'✅':'⚠️'}</div>
-      <div><div class="metric-val">${fmt(profit)}</div><div class="metric-label">Lucro Estimado</div><div class="metric-sub" style="color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'Positivo':'Negativo'}</div></div>
-    </div>
-    <div class="metric-card">
-      <div class="metric-icon" style="background:rgba(139,92,246,.15)">🔥</div>
-      <div><div class="metric-val">${active}</div><div class="metric-label">Em Andamento</div><div class="metric-sub" style="color:var(--muted)">Pedidos ativos</div></div>
+      <div><div class="metric-val">${active}</div><div class="metric-label">Em andamento</div><div class="metric-sub" style="color:var(--muted)">Pedidos ativos</div></div>
     </div>
     <div class="metric-card">
       <div class="metric-icon" style="background:rgba(46,160,67,.15)">🛵</div>
@@ -938,11 +929,7 @@ function dashboard(el){
     </div>
   </div>
 
-  <div class="chart-row">
-    <div class="chart-box">
-      <h3>📈 Faturamento dos Últimos 7 Dias</h3>
-      <canvas id="chart7" height="200"></canvas>
-    </div>
+  <div class="chart-row" style="grid-template-columns:1fr">
     <div class="chart-box">
       <h3>🍕 Pizzas Mais Vendidas por Tamanho</h3>
       <div class="ranking-list" id="pizza-ranking-list">
@@ -956,12 +943,6 @@ function dashboard(el){
     </div>
   </div>`;
 
-  // Chart
-  setTimeout(()=>{
-    const ctx=document.getElementById('chart7')?.getContext('2d');
-    if(!ctx)return;
-    new Chart(ctx,{type:'bar',data:{labels:labels7,datasets:[{data:last7,backgroundColor:'rgba(230,57,70,.7)',borderRadius:6,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e'}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e',callback:v=>'R$'+v}}}}});
-  },50);
 }
 
 // ============================================================
@@ -1021,6 +1002,8 @@ function pdv(el){
         <div class="cart-total-row"><span style="color:var(--muted)">Subtotal</span><span id="cart-sub">R$ 0,00</span></div>
         <div class="cart-total-row" style="align-items:center;gap:6px"><span style="color:var(--muted)">Desconto</span><span style="display:flex;gap:4px;align-items:center"><select id="cart-discount-type" style="padding:4px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px" onchange="updateCartTotal()"><option value="value">R$</option><option value="percent">%</option></select><input id="cart-discount-value" type="number" min="0" step="0.01" placeholder="0" style="width:70px;padding:4px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px" oninput="updateCartTotal()"></span></div>
         <div class="cart-total-row" id="cart-discount-row" style="display:none;color:var(--green);font-size:12px"><span>Desconto aplicado</span><span id="cart-discount-amount">R$ 0,00</span></div>
+        <div class="cart-total-row" style="align-items:center;gap:6px"><span style="color:var(--muted)">Adicional</span><span style="display:flex;gap:4px;align-items:center"><select id="cart-addition-type" style="padding:4px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px" onchange="updateCartTotal()"><option value="value">R$</option><option value="percent">%</option></select><input id="cart-addition-value" type="number" min="0" step="0.01" placeholder="0" style="width:70px;padding:4px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px" oninput="updateCartTotal()"></span></div>
+        <div class="cart-total-row" id="cart-addition-row" style="display:none;color:var(--orange);font-size:12px"><span>Adicional aplicado</span><span id="cart-addition-amount">R$ 0,00</span></div>
         <div class="cart-total-row big"><span>Total</span><span id="cart-total-val" style="color:var(--red)">R$ 0,00</span></div>
         <textarea class="cart-obs" id="cart-obs" rows="2" placeholder="Observações do pedido..."></textarea>
         
@@ -1051,6 +1034,12 @@ function pdv(el){
   </div>`;
   updateCartTotal();
   if(orderType==='mesa') document.getElementById('pdv-payment-area').style.display='none';
+}
+
+function mobileOrders(el){
+  pdv(el);
+  el.classList.add('mobile-pdv-page');
+  const title=el.querySelector('.pdv-products')?.insertAdjacentHTML('afterbegin','<div style="font-size:12px;color:var(--muted);margin:-4px 0 10px">📱 Modo celular para anotar pedidos diretamente nas mesas</div>');
 }
 
 function syncPaymentAmount(prefix){
@@ -1319,7 +1308,10 @@ function updateCartTotal(){
   const discountType=document.getElementById('cart-discount-type')?.value||'value';
   const raw=Math.max(0,parseFloat(document.getElementById('cart-discount-value')?.value)||0);
   const discountAmount=Math.min(subtotal,discountType==='percent'?subtotal*Math.min(100,raw)/100:raw);
-  const total=Math.max(0,subtotal-discountAmount);
+  const additionType=document.getElementById('cart-addition-type')?.value||'value';
+  const additionInput=Math.max(0,parseFloat(document.getElementById('cart-addition-value')?.value)||0);
+  const additionAmount=additionType==='percent'?subtotal*Math.min(100,additionInput)/100:additionInput;
+  const total=Math.max(0,subtotal-discountAmount+additionAmount);
   const sub=document.getElementById('cart-sub');
   const tot=document.getElementById('cart-total-val');
   if(sub) sub.textContent=fmt(subtotal);
@@ -1327,6 +1319,9 @@ function updateCartTotal(){
   const discountRow=document.getElementById('cart-discount-row');
   if(discountRow) discountRow.style.display=discountAmount>0?'flex':'none';
   if(document.getElementById('cart-discount-amount')) document.getElementById('cart-discount-amount').textContent=fmt(discountAmount);
+  const additionRow=document.getElementById('cart-addition-row');
+  if(additionRow) additionRow.style.display=additionAmount>0?'flex':'none';
+  if(document.getElementById('cart-addition-amount')) document.getElementById('cart-addition-amount').textContent=fmt(additionAmount);
   if(document.getElementById('pdv-received')) updateChange('pdv-received','add-pay-val','pdv-change-val');
   if(document.getElementById('pay-remain')) renderMultiPayments('multi-pay-list','pay-remain',multiPayments,null);
 }
@@ -1374,7 +1369,10 @@ function submitOrder(){
   const discountType=document.getElementById('cart-discount-type')?.value||'value';
   const discountInput=Math.max(0,parseFloat(document.getElementById('cart-discount-value')?.value)||0);
   const discountAmount=Math.min(subtotal,discountType==='percent'?subtotal*Math.min(100,discountInput)/100:discountInput);
-  const total=Math.max(0,subtotal-discountAmount);
+  const additionType=document.getElementById('cart-addition-type')?.value||'value';
+  const additionInput=Math.max(0,parseFloat(document.getElementById('cart-addition-value')?.value)||0);
+  const additionAmount=additionType==='percent'?subtotal*Math.min(100,additionInput)/100:additionInput;
+  const total=Math.max(0,subtotal-discountAmount+additionAmount);
   const paid = multiPayments.reduce((s,p)=>s+p.value,0);
   
   if(orderType !== 'mesa' && paid < total) {
@@ -1391,7 +1389,7 @@ function submitOrder(){
     tableId:orderType==='mesa'?tableId:null,
     type:orderType,
     items:cart.map(c=>({...c})),
-    subtotal,discountType,discountInput,discountAmount,total,
+    subtotal,discountType,discountInput,discountAmount,additionType,additionInput,additionAmount,total,
     payment: orderType==='mesa' ? 'Aberto' : (multiPayments.length > 0 ? multiPayments : 'Pendente'),
     obs,
     status:'pending',
@@ -1539,6 +1537,7 @@ function viewOrder(id){
       <span>Total</span><span style="color:var(--red)">${fmt(o.total)}</span>
     </div>
     ${Number(o.discountAmount)>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--green);margin-top:6px"><span>Desconto${o.discountType==='percent'?` (${o.discountInput}%)`:''}</span><span>- ${fmt(o.discountAmount)}</span></div>`:''}
+    ${Number(o.additionAmount)>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--orange);margin-top:6px"><span>Adicional${o.additionType==='percent'?` (${o.additionInput}%)`:''}</span><span>+ ${fmt(o.additionAmount)}</span></div>`:''}
     ${o.obs?`<p style="margin-top:10px;font-size:13px;color:var(--muted)">📝 ${o.obs}</p>`:''}
     ${o.address?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">📍 ${o.address}</p>`:''}
     ${o.tableId?`<p style="margin-top:6px;font-size:13px;color:var(--muted)">🪑 Mesa ${o.tableId}</p>`:''}
@@ -1993,7 +1992,7 @@ function finDateKey(value){
 function finToday(){return new Date().toISOString().slice(0,10)}
 function finLabelDate(value){if(!value)return '-';const p=finDateKey(value).split('-');return `${p[2]}/${p[1]}/${p[0]}`}
 function finNum(id){return parseFloat(document.getElementById(id)?.value)||0}
-function finMovementLabel(c){return ({venda:'Venda',mercadoria:'Mercadoria',queijo:'Queijo',funcionarios:'Funcionários',aluguel:'Aluguel',energia:'Energia',internet:'Internet',salario:'Salário',cartao:'Cartão',moto:'Moto',divida:'Dívida',retirada:'Retirada pessoal',capital:'Capital de giro',reserva:'Reserva',conta:'Conta',outros:'Outros'})[c]||c||'Outros'}
+function finMovementLabel(c){return ({venda:'Venda',mercadoria:'Mercadoria',queijo:'Queijo',funcionarios:'Funcionários',aluguel:'Aluguel',energia:'Energia',internet:'Internet',salario:'Salário',cartao:'Cartão',moto:'Moto',divida:'Dívida',retirada:'Retirada pessoal',capital:'Capital de giro',reserva:'Reserva',conta:'Conta',caixa:'Caixa',outros:'Outros'})[c]||c||'Outros'}
 function finDaysLeft(a){if(a.dueDate){const d=Math.ceil((new Date(`${a.dueDate}T23:59:59`)-new Date())/86400000);return Math.max(1,d)}return Math.max(1,parseInt(a.days)||1)}
 function finOrders(){return S.get('pp_orders',[]).filter(o=>o.status==='done')}
 function finPaymentTotals(orders){const out={dinheiro:0,cartao:0,pix:0,outros:0};orders.forEach(o=>{if(Array.isArray(o.payment)){o.payment.forEach(p=>{out[p.type]!==undefined?out[p.type]+=Number(p.value)||0:out.outros+=Number(p.value)||0})}else if(out[o.payment]!==undefined)out[o.payment]+=Number(o.total)||0;else out.outros+=Number(o.total)||0});return out}
@@ -2005,17 +2004,24 @@ function finSummary(){
   const operational=out-personal-reserved, saldo=revenue+manualIn-out;
   return {orders,movements,revenue,dayRevenue,weekRevenue,monthRevenue,manualIn,out,personal,reserved,operational,saldo,byPayment:finPaymentTotals(orders)};
 }
+function cashSummary(){
+  const c=S.get('pp_finance_cash',{openingCash:0,openingPix:0,movements:[]}),moves=c.movements||[];
+  const cashOut=moves.filter(m=>m.paymentType==='dinheiro').reduce((s,m)=>s+(Number(m.value)||0),0);
+  const pixOut=moves.filter(m=>m.paymentType==='pix').reduce((s,m)=>s+(Number(m.value)||0),0);
+  return {...c,cashOut,pixOut,cashBalance:Math.max(0,(Number(c.openingCash)||0)-cashOut),pixBalance:Math.max(0,(Number(c.openingPix)||0)-pixOut)};
+}
 function unlockFinance(){const pass=document.getElementById('finance-pass')?.value||'';const cfg=S.get('pp_finance_settings',{});if(pass===cfg.financePassword){financeUnlockedSession=true;navigate('financeiro')}else{const e=document.getElementById('finance-lock-error');if(e)e.textContent='Senha financeira incorreta.'}}
 function lockFinance(){financeUnlockedSession=false;navigate('financeiro')}
 function financeAccountRows(){return S.get('pp_finance_accounts',[]).map(a=>{const rem=Math.max(0,(Number(a.goal)||0)-(Number(a.accumulated)||0)),pct=Math.min(100,((Number(a.accumulated)||0)/(Number(a.goal)||1))*100),daily=rem/finDaysLeft(a);return `<tr><td>${a.name}</td><td>${fmt(a.goal)}</td><td>${fmt(a.accumulated)}</td><td>${fmt(rem)}</td><td>${fmt(daily)}</td><td>${a.dueDate?finLabelDate(a.dueDate):`${a.days||'-'} dias`}</td><td><span class="finance-tag" style="${a.status==='paid'||pct>=100?'background:rgba(46,160,67,.15);color:#3fb950':''}">${a.status==='paid'?'PAGA':pct>=100?'META ATINGIDA':'ABERTA'}</span></td><td class="row-actions"><button class="btn btn-gray btn-xs" onclick="openFinancialAccount(${a.id})">Editar</button>${a.status!=='paid'?`<button class="btn btn-green btn-xs" onclick="markFinancialAccountPaid(${a.id})">Pagar</button>`:''}<button class="btn btn-gray btn-xs" onclick="deleteFinancialAccount(${a.id})">Excluir</button></td></tr>`}).join('')||'<tr><td colspan="8" class="finance-muted" style="text-align:center;padding:20px">Nenhuma conta cadastrada.</td></tr>'}
 function financeHistoryRows(){const type=document.getElementById('fin-history-type')?.value||'all',cat=document.getElementById('fin-history-cat')?.value||'all',from=document.getElementById('fin-history-from')?.value||'',to=document.getElementById('fin-history-to')?.value||'';const rows=S.get('pp_finance_movements',[]).filter(m=>(type==='all'||m.type===type)&&(cat==='all'||m.category===cat)&&(!from||finDateKey(m.date)>=from)&&(!to||finDateKey(m.date)<=to)).reverse();return rows.map(m=>`<tr><td>${finLabelDate(m.date)}</td><td><span class="finance-tag">${m.type==='entrada'?'Entrada':'Saída'}</span></td><td>${finMovementLabel(m.category)}</td><td>${m.description||'-'}</td><td style="color:${m.type==='entrada'?'#3fb950':'#ff7b72'};font-weight:700">${m.type==='entrada'?'+':'-'} ${fmt(m.value)}</td><td>${m.notes||'-'}</td></tr>`).join('')||'<tr><td colspan="6" class="finance-muted" style="text-align:center;padding:20px">Nenhum lançamento encontrado.</td></tr>'}
 function filterFinanceHistory(){const el=document.getElementById('fin-history-body');if(el)el.innerHTML=financeHistoryRows()}
 function financeRenderUnlocked(el){
-  const s=finSummary(),cfg=S.get('pp_finance_settings',{}),accounts=S.get('pp_finance_accounts',[]),purchases=S.get('pp_finance_purchases',[]),reserves=S.get('pp_finance_reserves',[]),closings=S.get('pp_finance_closings',[]),capitalTarget=Number(cfg.capitalGoal)||4000,capitalSaved=s.movements.filter(m=>m.type==='saida'&&m.category==='capital').reduce((t,m)=>t+(Number(m.value)||0),0),goodsTarget=(Number(cfg.goodsDaily)||166.67)*30,goodsUsed=purchases.reduce((t,p)=>t+(Number(p.value)||0),0),cheeseTarget=(Number(cfg.cheeseDaily)||230)*(Number(cfg.operatingDaysPerWeek)||4),cheeseSaved=reserves.filter(r=>r.category==='queijo').reduce((t,r)=>t+(Number(r.value)||0),0);
+  const s=finSummary(),cash=cashSummary(),cfg=S.get('pp_finance_settings',{}),accounts=S.get('pp_finance_accounts',[]),purchases=S.get('pp_finance_purchases',[]),reserves=S.get('pp_finance_reserves',[]),closings=S.get('pp_finance_closings',[]),capitalTarget=Number(cfg.capitalGoal)||4000,capitalSaved=s.movements.filter(m=>m.type==='saida'&&m.category==='capital').reduce((t,m)=>t+(Number(m.value)||0),0),goodsTarget=(Number(cfg.goodsDaily)||166.67)*30,goodsUsed=purchases.reduce((t,p)=>t+(Number(p.value)||0),0),cheeseTarget=(Number(cfg.cheeseDaily)||230)*(Number(cfg.operatingDaysPerWeek)||4),cheeseSaved=reserves.filter(r=>r.category==='queijo').reduce((t,r)=>t+(Number(r.value)||0),0);
   const targetRows=(cfg.reserveTargets||[]).map(t=>{const saved=reserves.filter(r=>r.category===t.category).reduce((x,r)=>x+(Number(r.value)||0),0);return `<tr><td>${t.name}</td><td>${fmt(t.daily)}</td><td>${fmt(saved)}</td><td>${fmt(Math.max(0,t.daily-saved))}</td><td><button class="btn btn-blue btn-xs" onclick="openFinancialReserve('${t.category}')">Reservar</button></td></tr>`}).join('');
   el.innerHTML=`<div class="finance-shell">
     <div class="page-header" style="margin-bottom:16px"><h2>💰 Financeiro</h2><div class="finance-action-row" style="margin:0"><button class="btn btn-blue btn-sm" onclick="openFinancialMovement()">+ Nova movimentação</button><button class="btn btn-gray btn-sm" onclick="printFinanceiro()">🖨️ Imprimir</button><button class="btn btn-gray btn-sm" onclick="lockFinance()">🔒 Bloquear</button></div></div>
     <div class="metric-grid" style="margin-bottom:16px"><div class="metric-card"><div class="metric-icon" style="background:rgba(46,160,67,.15)">📅</div><div><div class="metric-val">${fmt(s.dayRevenue)}</div><div class="metric-label">Faturamento do dia</div></div></div><div class="metric-card"><div class="metric-icon" style="background:rgba(31,111,235,.15)">📊</div><div><div class="metric-val">${fmt(s.weekRevenue)}</div><div class="metric-label">Faturamento da semana</div></div></div><div class="metric-card"><div class="metric-icon" style="background:rgba(139,92,246,.15)">🗓️</div><div><div class="metric-val">${fmt(s.monthRevenue)}</div><div class="metric-label">Faturamento do mês</div></div></div><div class="metric-card"><div class="metric-icon" style="background:rgba(240,192,0,.15)">💰</div><div><div class="metric-val">${fmt(s.revenue)}</div><div class="metric-label">Faturamento acumulado</div></div></div></div>
+    <div class="finance-section"><h3>💵 Controle do caixa <button class="btn btn-blue btn-sm" onclick="openCashControl()">Ajustar caixa / Registrar saída</button></h3><div class="finance-grid-3"><div class="finance-mini"><div class="finance-mini-label">Troco em dinheiro</div><div class="finance-mini-value">${fmt(cash.cashBalance)}</div><div class="finance-muted">Inicial: ${fmt(cash.openingCash)} · Saídas: ${fmt(cash.cashOut)}</div></div><div class="finance-mini"><div class="finance-mini-label">Saldo separado em Pix</div><div class="finance-mini-value">${fmt(cash.pixBalance)}</div><div class="finance-muted">Inicial: ${fmt(cash.openingPix)} · Saídas: ${fmt(cash.pixOut)}</div></div><div class="finance-mini"><div class="finance-mini-label">Saídas registradas</div><div class="finance-mini-value">${cash.movements.length}</div><div class="finance-muted">Gasolina, compras e outros gastos</div></div></div></div>
     <div class="finance-grid-2"><div class="finance-section"><h3>Resultado real</h3><table><tr><td>Faturamento</td><td style="text-align:right;color:#3fb950;font-weight:700">${fmt(s.revenue)}</td></tr><tr><td>Despesas operacionais</td><td style="text-align:right;color:#ff7b72;font-weight:700">- ${fmt(s.operational)}</td></tr><tr><td>Reservas e capital</td><td style="text-align:right;color:#f0c000;font-weight:700">- ${fmt(s.reserved)}</td></tr><tr style="border-top:2px solid var(--border)"><td><strong>Resultado operacional</strong></td><td style="text-align:right;color:var(--red);font-weight:700">${fmt(s.revenue-s.operational-s.reserved)}</td></tr><tr><td>Retiradas pessoais</td><td style="text-align:right">${fmt(s.personal)}</td></tr><tr><td><strong>Saldo disponível</strong></td><td style="text-align:right;color:#58a6ff;font-weight:700">${fmt(s.saldo)}</td></tr></table></div><div class="finance-section"><h3>Entradas por pagamento</h3><canvas id="fin-payment-chart" height="150"></canvas><div class="finance-grid-3"><div class="finance-mini"><div class="finance-mini-label">Dinheiro</div><div class="finance-mini-value">${fmt(s.byPayment.dinheiro)}</div></div><div class="finance-mini"><div class="finance-mini-label">Cartão</div><div class="finance-mini-value">${fmt(s.byPayment.cartao)}</div></div><div class="finance-mini"><div class="finance-mini-label">Pix</div><div class="finance-mini-value">${fmt(s.byPayment.pix)}</div></div></div></div></div>
     <div class="finance-section"><h3>Contas e metas <button class="btn btn-blue btn-sm" onclick="openFinancialAccount()">+ Adicionar conta</button></h3><div class="finance-scroll"><table><thead><tr><th>Conta</th><th>Meta</th><th>Acumulado</th><th>Faltam</th><th>Diário</th><th>Prazo</th><th>Status</th><th>Ações</th></tr></thead><tbody>${financeAccountRows()}</tbody></table></div></div>
     <div class="finance-grid-3"><div class="finance-section"><h3>Capital de giro</h3><div class="finance-mini-value">${fmt(capitalSaved)} / ${fmt(capitalTarget)}</div><div class="finance-progress"><span style="width:${Math.min(100,capitalSaved/capitalTarget*100)}%"></span></div><div class="finance-muted">${capitalSaved>=capitalTarget?'Capital de giro completo':`${fmt(Math.max(0,capitalTarget-capitalSaved))} restantes`}</div><button class="btn btn-blue btn-sm" style="margin-top:10px" onclick="openFinancialReserve('capital')">Reservar capital</button></div><div class="finance-section"><h3>Mercadorias</h3><div class="finance-mini-value">${fmt(goodsUsed)} / ${fmt(goodsTarget)}</div><div class="finance-progress"><span style="width:${Math.min(100,goodsUsed/goodsTarget*100)}%"></span></div><div class="finance-muted">Valor utilizado: ${fmt(goodsUsed)}</div><button class="btn btn-blue btn-sm" style="margin-top:10px" onclick="openFinancialPurchase()">Registrar compra</button></div><div class="finance-section"><h3>Queijo</h3><div class="finance-mini-value">${fmt(cheeseSaved)} / ${fmt(cheeseTarget)}</div><div class="finance-progress"><span style="width:${Math.min(100,cheeseSaved/cheeseTarget*100)}%"></span></div><div class="finance-muted">${fmt(cfg.cheeseDaily||230)} por dia · ${cfg.operatingDaysPerWeek||4} dias/semana</div><button class="btn btn-blue btn-sm" style="margin-top:10px" onclick="openFinancialReserve('queijo')">Reservar queijo</button></div></div>
@@ -2027,8 +2033,10 @@ function financeRenderUnlocked(el){
   setTimeout(()=>{const p=document.getElementById('fin-payment-chart')?.getContext('2d');if(p&&window.Chart)new Chart(p,{type:'doughnut',data:{labels:['Dinheiro','Cartão','Pix'],datasets:[{data:[s.byPayment.dinheiro,s.byPayment.cartao,s.byPayment.pix],backgroundColor:['#f0c000','#1f6feb','#27ae60'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#e6edf3'}}}}});},50);
 }
 function financeiro(el){if(!financeUnlockedSession){el.innerHTML=`<div class="finance-shell"><div class="finance-section" style="max-width:520px;margin:40px auto;text-align:center"><h2 style="margin-bottom:10px">🔒 Financeiro protegido</h2><p class="finance-muted" style="margin-bottom:18px">Digite a senha adicional para acessar os dados financeiros.</p><div class="form-row"><input id="finance-pass" type="password" placeholder="Senha do Financeiro" onkeydown="if(event.key==='Enter')unlockFinance()"></div><div id="finance-lock-error" class="alert alert-error" style="display:block;margin-bottom:12px"></div><button class="btn btn-blue" onclick="unlockFinance()">Acessar Financeiro</button></div></div>`;return}financeRenderUnlocked(el)}
-function openFinancialMovement(id){const m=S.get('pp_finance_movements',[]).find(x=>x.id===id);openModal(`<div class="modal"><h3>💰 ${m?'Editar':'Nova'} movimentação</h3><div class="form-cols"><div class="form-row"><label>Tipo</label><select id="fm-type"><option value="entrada" ${m?.type==='entrada'?'selected':''}>Entrada</option><option value="saida" ${m?.type==='saida'?'selected':''}>Saída</option></select></div><div class="form-row"><label>Data</label><input id="fm-date" type="date" value="${finDateKey(m?.date||finToday())}"></div></div><div class="form-cols"><div class="form-row"><label>Categoria</label><select id="fm-cat"><option value="outros">Outros</option><option value="retirada">Retirada pessoal</option><option value="mercadoria">Mercadoria</option><option value="queijo">Queijo</option><option value="conta">Conta</option><option value="capital">Capital de giro</option><option value="reserva">Reserva</option></select></div><div class="form-row"><label>Valor</label><input id="fm-value" type="number" step="0.01" value="${m?.value||''}"></div></div><div class="form-row"><label>Descrição</label><input id="fm-desc" value="${m?.description||''}" placeholder="Ex.: pagamento, compra, aporte..."></div><div class="form-row"><label>Observação</label><input id="fm-notes" value="${m?.notes||''}"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialMovement(${id||'null'})">Salvar</button></div></div>`)}
+function openFinancialMovement(id){const m=S.get('pp_finance_movements',[]).find(x=>x.id===id);openModal(`<div class="modal"><h3>💰 ${m?'Editar':'Nova'} movimentação</h3><div class="form-cols"><div class="form-row"><label>Tipo</label><select id="fm-type"><option value="entrada" ${m?.type==='entrada'?'selected':''}>Entrada</option><option value="saida" ${m?.type==='saida'?'selected':''}>Saída</option></select></div><div class="form-row"><label>Data</label><input id="fm-date" type="date" value="${finDateKey(m?.date||finToday())}"></div></div><div class="form-cols"><div class="form-row"><label>Categoria</label><select id="fm-cat"><option value="outros">Outros</option><option value="retirada">Retirada pessoal</option><option value="mercadoria">Mercadoria</option><option value="queijo">Queijo</option><option value="conta">Conta</option><option value="capital">Capital de giro</option><option value="caixa">Caixa</option><option value="reserva">Reserva</option></select></div><div class="form-row"><label>Valor</label><input id="fm-value" type="number" step="0.01" value="${m?.value||''}"></div></div><div class="form-row"><label>Descrição</label><input id="fm-desc" value="${m?.description||''}" placeholder="Ex.: pagamento, compra, aporte..."></div><div class="form-row"><label>Observação</label><input id="fm-notes" value="${m?.notes||''}"></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialMovement(${id||'null'})">Salvar</button></div></div>`)}
 function saveFinancialMovement(id){const items=S.get('pp_finance_movements',[]),data={id:id||nextId(items),type:document.getElementById('fm-type').value,date:document.getElementById('fm-date').value,category:document.getElementById('fm-cat').value,value:finNum('fm-value'),description:document.getElementById('fm-desc').value.trim(),notes:document.getElementById('fm-notes').value.trim()};if(!data.value){alert('Informe um valor válido');return}const i=items.findIndex(x=>x.id===id);if(i>=0)items[i]=data;else items.push(data);S.set('pp_finance_movements',items);closeModal();navigate('financeiro')}
+function openCashControl(){const c=S.get('pp_finance_cash',{openingCash:0,openingPix:0,movements:[]});openModal(`<div class="modal"><h3>💵 Controle do caixa</h3><p class="finance-muted" style="margin-bottom:14px">Informe o troco disponível no início do trabalho e registre qualquer saída durante a noite.</p><div class="form-cols"><div class="form-row"><label>Troco inicial em dinheiro</label><input id="cash-opening" type="number" step="0.01" value="${c.openingCash||0}"></div><div class="form-row"><label>Valor inicial em Pix</label><input id="cash-opening-pix" type="number" step="0.01" value="${c.openingPix||0}"></div></div><div style="border-top:1px solid var(--border);margin:4px 0 16px;padding-top:14px"><div class="form-row"><label>Registrar saída do caixa</label><select id="cash-payment"><option value="dinheiro">💵 Dinheiro</option><option value="pix">📱 Pix</option></select></div><div class="form-cols"><div class="form-row"><label>Valor da saída</label><input id="cash-value" type="number" step="0.01" placeholder="Ex.: 20,00"></div><div class="form-row"><label>Descrição do gasto</label><input id="cash-desc" placeholder="Ex.: Gasolina"></div></div></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveCashControl()">Salvar</button></div></div>`)}
+function saveCashControl(){const c=S.get('pp_finance_cash',{openingCash:0,openingPix:0,movements:[]});c.openingCash=Math.max(0,finNum('cash-opening'));c.openingPix=Math.max(0,finNum('cash-opening-pix'));const value=finNum('cash-value'),paymentType=document.getElementById('cash-payment').value,description=document.getElementById('cash-desc').value.trim();if(value>0&&!description){alert('Descreva o gasto realizado');return}if(value>0){const move={id:nextId(c.movements||[]),date:finToday(),value,paymentType,description};c.movements=[...(c.movements||[]),move];const financial=S.get('pp_finance_movements',[]);financial.push({id:nextId(financial),type:'saida',category:'caixa',value,date:move.date,description:`${description} (${paymentType==='dinheiro'?'Dinheiro':'Pix'})`,notes:'Saída registrada no controle do caixa'});S.set('pp_finance_movements',financial)}S.set('pp_finance_cash',c);closeModal();navigate('financeiro')}
 function openFinancialAccount(id){const a=S.get('pp_finance_accounts',[]).find(x=>x.id===id);openModal(`<div class="modal"><h3>📌 ${a?'Editar':'Adicionar'} conta/meta</h3><div class="form-row"><label>Nome da conta</label><input id="fa-name" value="${a?.name||''}" placeholder="Ex.: Funcionários"></div><div class="form-cols"><div class="form-row"><label>Valor necessário</label><input id="fa-goal" type="number" step="0.01" value="${a?.goal||''}"></div><div class="form-row"><label>Valor acumulado</label><input id="fa-acc" type="number" step="0.01" value="${a?.accumulated||0}"></div></div><div class="form-cols"><div class="form-row"><label>Data de vencimento</label><input id="fa-due" type="date" value="${a?.dueDate||''}"></div><div class="form-row"><label>Dias para juntar</label><input id="fa-days" type="number" value="${a?.days||30}"></div></div><div class="modal-footer"><button class="btn btn-gray" onclick="closeModal()">Cancelar</button><button class="btn btn-blue" onclick="saveFinancialAccount(${id||'null'})">Salvar</button></div></div>`)}
 function saveFinancialAccount(id){const items=S.get('pp_finance_accounts',[]),goal=finNum('fa-goal'),acc=finNum('fa-acc'),data={id:id||nextId(items),name:document.getElementById('fa-name').value.trim(),goal,accumulated:acc,dueDate:document.getElementById('fa-due').value,days:parseInt(document.getElementById('fa-days').value)||30,status:acc>=goal?'reached':'open'};if(!data.name||!goal){alert('Informe nome e meta');return}const i=items.findIndex(x=>x.id===id);if(i>=0)items[i]={...items[i],...data};else items.push(data);S.set('pp_finance_accounts',items);closeModal();navigate('financeiro')}
 function markFinancialAccountPaid(id){const items=S.get('pp_finance_accounts',[]),a=items.find(x=>x.id===id);if(!a||a.status==='paid')return;if(!confirm(`Marcar ${a.name} como paga?`))return;const remaining=Math.max(0,(Number(a.goal)||0)-(Number(a.accumulated)||0));a.accumulated=a.goal;a.status='paid';a.paidAt=finToday();S.set('pp_finance_accounts',items);if(remaining) {const mv=S.get('pp_finance_movements',[]);mv.push({id:nextId(mv),type:'saida',category:'conta',value:remaining,date:finToday(),description:`Pagamento: ${a.name}`,notes:'Conta marcada como paga'});S.set('pp_finance_movements',mv)}navigate('financeiro')}
@@ -2456,6 +2464,7 @@ function checkoutOrder(id){
       <div style="font-size:32px;font-weight:800;color:var(--red)" id="checkout-total-val">${fmt(o.total)}</div>
     </div>
     <div class="form-row" style="margin-bottom:14px"><label>Desconto no fechamento</label><div style="display:flex;gap:6px"><select id="checkout-discount-type" style="width:90px;padding:7px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text)" onchange="updateCheckoutTotal(${id})"><option value="value">R$</option><option value="percent">%</option></select><input id="checkout-discount-value" type="number" min="0" step="0.01" placeholder="0" style="flex:1;padding:7px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text)" oninput="updateCheckoutTotal(${id})"></div><div id="checkout-discount-note" style="font-size:11px;color:var(--green);margin-top:5px"></div></div>
+    <div class="form-row" style="margin-bottom:14px"><label>Adicional no fechamento</label><div style="display:flex;gap:6px"><select id="checkout-addition-type" style="width:90px;padding:7px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text)" onchange="updateCheckoutTotal(${id})"><option value="value">R$</option><option value="percent">%</option></select><input id="checkout-addition-value" type="number" min="0" step="0.01" placeholder="0" style="flex:1;padding:7px;background:#0d1117;border:1px solid var(--border);border-radius:6px;color:var(--text)" oninput="updateCheckoutTotal(${id})"></div><div id="checkout-addition-note" style="font-size:11px;color:var(--orange);margin-top:5px"></div></div>
     
     <p style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">PAGAMENTO</p>
     <div id="checkout-pay-list" style="margin-bottom:10px"></div>
@@ -2492,9 +2501,13 @@ function updateCheckoutTotal(id){
   const type=document.getElementById('checkout-discount-type')?.value||'value';
   const input=Math.max(0,Number(document.getElementById('checkout-discount-value')?.value)||0);
   const amount=Math.min(base,type==='percent'?base*Math.min(100,input)/100:input);
-  checkoutTotal=Math.max(0,base-amount);
+  const addType=document.getElementById('checkout-addition-type')?.value||'value';
+  const addInput=Math.max(0,Number(document.getElementById('checkout-addition-value')?.value)||0);
+  const addition=addType==='percent'?base*Math.min(100,addInput)/100:addInput;
+  checkoutTotal=Math.max(0,base-amount+addition);
   const totalEl=document.getElementById('checkout-total-val');if(totalEl)totalEl.textContent=fmt(checkoutTotal);
   const note=document.getElementById('checkout-discount-note');if(note)note.textContent=amount?`Desconto aplicado: ${fmt(amount)}`:'';
+  const addNote=document.getElementById('checkout-addition-note');if(addNote)addNote.textContent=addition?`Adicional aplicado: ${fmt(addition)}`:'';
   renderMultiPayments('checkout-pay-list','chk-pay-remain',checkoutPayments,checkoutTotal);
 }
 
@@ -2513,6 +2526,9 @@ function finishTableOrder(id){
   o.discountType=document.getElementById('checkout-discount-type')?.value||o.discountType||'value';
   o.discountInput=Math.max(0,Number(document.getElementById('checkout-discount-value')?.value)||0);
   o.discountAmount=Math.min(o.subtotal,o.discountType==='percent'?o.subtotal*Math.min(100,o.discountInput)/100:o.discountInput);
+  o.additionType=document.getElementById('checkout-addition-type')?.value||o.additionType||'value';
+  o.additionInput=Math.max(0,Number(document.getElementById('checkout-addition-value')?.value)||0);
+  o.additionAmount=o.additionType==='percent'?o.subtotal*Math.min(100,o.additionInput)/100:o.additionInput;
   o.total=checkoutTotal;
   o.status = 'done';
   
@@ -2548,6 +2564,10 @@ function printOrder(id){
   const printedDiscountLabel=o.discountType==='percent'&&Number(o.discountInput)>0
     ? `Desconto (${Number(o.discountInput)}%)`
     : 'Desconto';
+  const printedAddition=Number(o.additionAmount)||0;
+  const printedAdditionLabel=o.additionType==='percent'&&Number(o.additionInput)>0
+    ? `Adicional (${Number(o.additionInput)}%)`
+    : 'Adicional';
 
   const sett = S.get('pp_settings', {});
   printEl.innerHTML = `
@@ -2573,7 +2593,7 @@ function printOrder(id){
         ${itemsHtml}
       </tbody>
     </table>
-    ${printedDiscount>0?`<div style="border-top:1px dashed #000;margin-top:8px;padding-top:6px"><p>Subtotal: ${fmt(printedSubtotal)}</p><p>${printedDiscountLabel}: - ${fmt(printedDiscount)}</p></div>`:''}
+    ${(printedDiscount>0||printedAddition>0)?`<div style="border-top:1px dashed #000;margin-top:8px;padding-top:6px"><p>Subtotal: ${fmt(printedSubtotal)}</p>${printedDiscount>0?`<p>${printedDiscountLabel}: - ${fmt(printedDiscount)}</p>`:''}${printedAddition>0?`<p>${printedAdditionLabel}: + ${fmt(printedAddition)}</p>`:''}</div>`:''}
     <div class="total-row">TOTAL: ${fmt(o.total)}</div>
     <p>Pagamento: ${o.payment === 'Aberto' ? 'Pendente' : (Array.isArray(o.payment) ? o.payment.map(p => `${p.type.toUpperCase()}: ${fmt(p.value)}${p.change>0?' (Troco: '+fmt(p.change)+')':''}`).join(' | ') : o.payment.toUpperCase())}</p>
     <div class="footer">
