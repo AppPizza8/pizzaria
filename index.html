@@ -873,10 +873,25 @@ function openModal(html){
 // ============================================================
 function dashboard(el){
   const orders=S.get('pp_orders',[]);
+  const todayStr=today();
+  const todayOrders=orders.filter(o=>o.createdAt&&o.createdAt.includes(todayStr));
+  const monthOrders=orders.filter(o=>o.createdAt&&o.createdAt.includes(new Date().toLocaleDateString('pt-BR').slice(3)));
+  const todaySales=todayOrders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.total||0),0);
+  const monthSales=monthOrders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.total||0),0);
+  const costs=monthSales*0.45;
+  const profit=monthSales-costs;
   const active=orders.filter(o=>['pending','making','delivery','ready'].includes(o.status)).length;
   const delivered=orders.filter(o=>o.status==='done').length;
   const cancelled=orders.filter(o=>o.status==='cancelled').length;
   const productsSold=orders.filter(o=>o.status==='done').reduce((s,o)=>s+(o.items||[]).reduce((t,i)=>t+(Number(i.qty)||0),0),0);
+
+  const last7=[];const labels7=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=d.toLocaleDateString('pt-BR');
+    labels7.push(['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()]);
+    last7.push(orders.filter(o=>o.status==='done'&&o.createdAt?.includes(ds)).reduce((s,o)=>s+(o.total||0),0));
+  }
 
   // Rankings separados: pizzas por sabor + tamanho e refrigerantes/bebidas.
   const pizzaCounts={},drinkCounts={};
@@ -913,6 +928,18 @@ function dashboard(el){
 
   <div class="metric-grid">
     <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(251,133,0,.15)">💰</div>
+      <div><div class="metric-val">${fmt(todaySales)}</div><div class="metric-label">Vendas Hoje</div><div class="metric-sub" style="color:var(--muted)">${todayOrders.filter(o=>o.status==='done').length} pedidos</div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(31,111,235,.15)">📋</div>
+      <div><div class="metric-val">${fmt(monthSales)}</div><div class="metric-label">Faturamento do Mês</div><div class="metric-sub" style="color:var(--green)">↑ ${monthOrders.filter(o=>o.status==='done').length} pedidos</div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon" style="background:rgba(${profit>=0?'46,160,67':'230,57,70'},.15)">${profit>=0?'✅':'⚠️'}</div>
+      <div><div class="metric-val">${fmt(profit)}</div><div class="metric-label">Lucro Estimado</div><div class="metric-sub" style="color:${profit>=0?'var(--green)':'var(--red)'}">${profit>=0?'Positivo':'Negativo'}</div></div>
+    </div>
+    <div class="metric-card">
       <div class="metric-icon" style="background:rgba(251,133,0,.15)">🍽️</div>
       <div><div class="metric-val">${productsSold}</div><div class="metric-label">Produtos vendidos</div><div class="metric-sub" style="color:var(--muted)">Pedidos concluídos</div></div>
     </div>
@@ -930,7 +957,11 @@ function dashboard(el){
     </div>
   </div>
 
-  <div class="chart-row" style="grid-template-columns:1fr">
+  <div class="chart-row">
+    <div class="chart-box">
+      <h3>📈 Faturamento dos Últimos 7 Dias</h3>
+      <canvas id="chart7" height="200"></canvas>
+    </div>
     <div class="chart-box">
       <h3>🍕 Pizzas Mais Vendidas por Tamanho</h3>
       <div class="ranking-list" id="pizza-ranking-list">
@@ -943,6 +974,12 @@ function dashboard(el){
       </div>
     </div>
   </div>`;
+
+  setTimeout(()=>{
+    const ctx=document.getElementById('chart7')?.getContext('2d');
+    if(!ctx||!window.Chart)return;
+    new Chart(ctx,{type:'bar',data:{labels:labels7,datasets:[{data:last7,backgroundColor:'rgba(230,57,70,.7)',borderRadius:6,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e'}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e',callback:v=>'R$'+v}}}}});
+  },50);
 
 }
 
