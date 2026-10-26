@@ -873,6 +873,7 @@ function openModal(html){
 // ============================================================
 function dashboard(el){
   const orders=S.get('pp_orders',[]);
+  const cash=cashSummary();
   const todayStr=today();
   const todayOrders=orders.filter(o=>o.createdAt&&o.createdAt.includes(todayStr));
   const monthOrders=orders.filter(o=>o.createdAt&&o.createdAt.includes(new Date().toLocaleDateString('pt-BR').slice(3)));
@@ -954,6 +955,15 @@ function dashboard(el){
     <div class="metric-card">
       <div class="metric-icon" style="background:rgba(230,57,70,.15)">❌</div>
       <div><div class="metric-val">${cancelled}</div><div class="metric-label">Cancelados</div><div class="metric-sub" style="color:var(--muted)">Total geral</div></div>
+    </div>
+  </div>
+
+  <div class="finance-section" style="margin-bottom:20px">
+    <h3>💵 Controle rápido do caixa <button class="btn btn-blue btn-sm" onclick="openCashControl()">Ajustar troco / Registrar saída</button></h3>
+    <div class="finance-grid-3">
+      <div class="finance-mini"><div class="finance-mini-label">Troco em dinheiro</div><div class="finance-mini-value">${fmt(cash.cashBalance)}</div><div class="finance-muted">Inicial: ${fmt(cash.openingCash)} · Saídas: ${fmt(cash.cashOut)}</div></div>
+      <div class="finance-mini"><div class="finance-mini-label">Saldo em Pix</div><div class="finance-mini-value">${fmt(cash.pixBalance)}</div><div class="finance-muted">Inicial: ${fmt(cash.openingPix)} · Saídas: ${fmt(cash.pixOut)}</div></div>
+      <div class="finance-mini"><div class="finance-mini-label">Saídas registradas</div><div class="finance-mini-value">${cash.movements.length}</div><div class="finance-muted">Gastos do expediente</div></div>
     </div>
   </div>
 
