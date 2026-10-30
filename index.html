@@ -623,6 +623,7 @@ const ALL_PAGES = {
   dashboard: {icon:'📊',label:'Dashboard',section:'PRINCIPAL'},
   pdv:       {icon:'🖥️',label:'PDV / Novo Pedido',section:'PRINCIPAL'},
   mobileOrders:{icon:'📱',label:'Pedidos pelo Celular',section:'PRINCIPAL'},
+  cashControl:{icon:'💵',label:'Caixa / Troco',section:'PRINCIPAL'},
   orders:    {icon:'🧾',label:'Pedidos',section:'PRINCIPAL',badge:'orders'},
   tables:    {icon:'🪑',label:'Mesas',section:'PRINCIPAL'},
   delivery:  {icon:'🛵',label:'Delivery',section:'PRINCIPAL'},
@@ -638,9 +639,9 @@ const ALL_PAGES = {
 };
 
 const ROLE_PAGES = {
-  admin:      ['dashboard','pdv','mobileOrders','orders','tables','delivery','kitchen','products','borders','clients','drivers','users','financeiro','settings','account'],
-  gerente:    ['dashboard','pdv','mobileOrders','orders','tables','delivery','kitchen','products','clients','financeiro','account'],
-  caixa:      ['pdv','mobileOrders','orders','tables','delivery','kitchen','account'],
+  admin:      ['dashboard','pdv','mobileOrders','cashControl','orders','tables','delivery','kitchen','products','borders','clients','drivers','users','financeiro','settings','account'],
+  gerente:    ['dashboard','pdv','mobileOrders','cashControl','orders','tables','delivery','kitchen','products','clients','financeiro','account'],
+  caixa:      ['pdv','mobileOrders','cashControl','orders','tables','delivery','kitchen','account'],
   entregador: ['delivery','account'],
   cozinha:    ['kitchen','account'],
 };
@@ -680,7 +681,7 @@ function toggleSidebar(){
 }
 
 let currentPage='';
-const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',mobileOrders:'Pedidos pelo Celular',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',settings:'Configurações',account:'Minha Conta'};
+const PAGE_TITLES={dashboard:'Dashboard',pdv:'PDV / Novo Pedido',mobileOrders:'Pedidos pelo Celular',cashControl:'Caixa / Troco',orders:'Pedidos',tables:'Mesas',delivery:'Delivery',kitchen:'Painel Cozinha',products:'Produtos',borders:'Bordas',clients:'Clientes',drivers:'Entregadores',users:'Usuários',financeiro:'Financeiro',settings:'Configurações',account:'Minha Conta'};
 
 let editingOrderId=null;
 let financeUnlockedSession=false;
@@ -696,7 +697,7 @@ function navigate(page){
   const el=document.getElementById('main-content');
   el.classList.remove('mobile-pdv-page');
   el.innerHTML='';
-  ({dashboard,pdv,mobileOrders,orders,tables,delivery,kitchen,products,borders,clients,drivers,users,financeiro,account})[page]?.(el);
+  ({dashboard,pdv,mobileOrders,cashControl,orders,tables,delivery,kitchen,products,borders,clients,drivers,users,financeiro,account})[page]?.(el);
 }
 
 // ============================================================
@@ -753,6 +754,7 @@ function orderDayStartLabel(){
   return start?new Date(start).toLocaleString('pt-BR'):'ainda não definido';
 }
 function startNewOrdersDay(){
+  if(!['admin','gerente','caixa'].includes(currentUser?.role)){alert('Seu usuário não tem permissão para iniciar um novo dia.');return;}
   const active=S.get('pp_orders',[]).filter(o=>['pending','making','delivery','ready'].includes(o.status));
   const warning=active.length?`\\n\\nAtenção: existem ${active.length} pedido(s) ainda em andamento. Eles não serão apagados e continuarão disponíveis nas outras telas e no histórico.`:'';
   if(!confirm(`Iniciar um novo dia na aba Pedidos?\\n\\nOs pedidos anteriores ficarão fora da visualização operacional, mas continuarão salvos para consulta no histórico.${warning}`))return;
@@ -991,6 +993,29 @@ function dashboard(el){
     new Chart(ctx,{type:'bar',data:{labels:labels7,datasets:[{data:last7,backgroundColor:'rgba(230,57,70,.7)',borderRadius:6,borderSkipped:false}]},options:{plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e'}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#8b949e',callback:v=>'R$'+v}}}}});
   },50);
 
+}
+
+function cashControl(el){
+  const cash=cashSummary();
+  const movements=[...(cash.movements||[])].slice().reverse();
+  el.innerHTML=`
+  <div class="page-header" style="margin-bottom:16px">
+    <div><h2>💵 Caixa / Troco</h2><div class="page-sub">Registre o troco e as saídas do expediente.</div></div>
+    <button class="btn btn-blue" onclick="openCashControl()">+ Nova movimentação</button>
+  </div>
+  <div class="finance-section" style="margin-bottom:16px">
+    <h3>Resumo do caixa</h3>
+    <div class="finance-grid-3">
+      <div class="finance-mini"><div class="finance-mini-label">Troco em dinheiro</div><div class="finance-mini-value">${fmt(cash.cashBalance)}</div><div class="finance-muted">Inicial: ${fmt(cash.openingCash)} · Saídas: ${fmt(cash.cashOut)}</div></div>
+      <div class="finance-mini"><div class="finance-mini-label">Saldo em Pix</div><div class="finance-mini-value">${fmt(cash.pixBalance)}</div><div class="finance-muted">Inicial: ${fmt(cash.openingPix)} · Saídas: ${fmt(cash.pixOut)}</div></div>
+      <div class="finance-mini"><div class="finance-mini-label">Movimentações</div><div class="finance-mini-value">${movements.length}</div><div class="finance-muted">Gastos registrados no expediente</div></div>
+    </div>
+  </div>
+  <div class="finance-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Observações e saídas do caixa</h3><button class="btn btn-blue btn-sm" onclick="openCashControl()">Registrar saída</button></div>
+    <p class="finance-muted" style="margin:6px 0 12px">Use este espaço para anotar gastos como gasolina, compras emergenciais ou qualquer valor retirado do caixa.</p>
+    <div class="finance-scroll"><table><thead><tr><th>Data</th><th>Forma</th><th>Valor</th><th>Descrição / Observação</th></tr></thead><tbody>${movements.map(m=>`<tr><td>${finLabelDate(m.date)}</td><td>${m.paymentType==='pix'?'📱 Pix':'💵 Dinheiro'}</td><td style="color:#ff7b72;font-weight:700">- ${fmt(m.value)}</td><td>${m.description||'-'}</td></tr>`).join('')||'<tr><td colspan="4" class="finance-muted" style="text-align:center;padding:20px">Nenhuma saída registrada.</td></tr>'}</tbody></table></div>
+  </div>`;
 }
 
 // ============================================================
@@ -1475,11 +1500,15 @@ function orders(el){
     <h2>🧾 Pedidos</h2>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
       <button class="btn btn-gray btn-sm" onclick="toggleOrdersHistory()">${ordersShowHistory?'↩ Voltar ao dia atual':'📚 Ver histórico'}</button>
-      <button class="btn btn-red btn-sm" onclick="startNewOrdersDay()">🌅 Novo dia / Zerar pedidos</button>
+      <button class="btn btn-red btn-sm" title="Oculta os pedidos anteriores desta tela sem apagar o histórico" onclick="startNewOrdersDay()">🌅 Zerar pedidos / Novo dia</button>
       <button class="btn btn-red" onclick="navigate('pdv')">+ Novo Pedido</button>
     </div>
   </div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${scopeLabel} · Os pedidos antigos continuam salvos e podem ser consultados no histórico.</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:rgba(230,57,70,.08);border:1px solid rgba(230,57,70,.22);border-radius:8px;padding:9px 12px;margin-bottom:14px">
+    <span style="font-size:12px;color:var(--muted)">Conferência do caixa: comece uma nova sequência sem apagar pedidos anteriores.</span>
+    <button class="btn btn-red btn-sm" onclick="startNewOrdersDay()">🧹 Zerar dia</button>
+  </div>
   <div class="cat-tabs" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
     <button class="cat-tab active" onclick="filterOrders('all',this)">Todos (${visibleOrders.length})</button>
     <button class="cat-tab" onclick="filterOrders('pending',this)">⏳ Aguardando (${count('pending')})</button>
